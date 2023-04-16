@@ -107,14 +107,6 @@ with open('bench_btree.sh.amortized_fixed.csv', 'w') as f:
         writer.writerow(r | {'MODE': 'bnd'} | {y: r[y+'_max'] for y in ys})
 HERE
 
-#    --colors=" \
-#        #4c72b0bf,#4c72b0bf,#4c72b0bf, \
-#        #dd8452bf,#dd8452bf,#dd8452bf, \
-#        #55a868bf,#55a868bf,#55a868bf, \
-#        #c44e52bf,#c44e52bf,#c44e52bf, \
-#        #8172b3bf,#8172b3bf,#8172b3bf, \
-#        #937860bf,#937860bf,#937860bf" \
-
 # plot results
 ./scripts/plotmpl.py \
     bench_btree.sh.raw_fixed.csv \
@@ -124,18 +116,21 @@ HERE
     -xN \
     $([ "${2:-}" == order ] && echo -bORDER || echo -DORDER=2) \
     $([ "${2:-}" == order ] && echo -DMODE=avg || echo -bMODE) \
-    -W1200 -H600 \
+    -W1600 -H600 \
     --ggplot --dark \
     --y2 --yunits=B \
     --xlabel="count" \
     --title="btree operations" \
-    --subplot="-Dcase=bench_btree_lookup -ybench_readed --ylabel=bench_readed --title=btree_lookup --xticklabels=" \
-        --subplot-below="-Dcase=bench_btree_lookup -ybench_proged --ylabel=bench_proged -Y0,1 --xticklabels=" \
-        --subplot-below="-Dcase=bench_btree_lookup -ybench_erased --ylabel=bench_erased -Y0,1 -H0.33" \
-    --subplot-right="-Dcase=bench_btree_commit -DAMORTIZED=0 -ybench_readed --title=btree_commit -W0.5 --xticklabels= \
+    --subplot="-Dcase=bench_btree_lookup -DVALIDATE=0 -ybench_readed --ylabel=bench_readed --title=btree_lookup --xticklabels=" \
+        --subplot-below="-Dcase=bench_btree_lookup -DVALIDATE=0 -ybench_proged --ylabel=bench_proged -Y0,1 --xticklabels=" \
+        --subplot-below="-Dcase=bench_btree_lookup -DVALIDATE=0 -ybench_erased --ylabel=bench_erased -Y0,1 -H0.33" \
+    --subplot-right="-Dcase=bench_btree_lookup -DVALIDATE=1 -ybench_readed --title='btree_lookup (validated)' -W0.5 --xticklabels= \
+        --subplot-below=\"-Dcase=bench_btree_lookup -DVALIDATE=0 -ybench_proged -Y0,1 --xticklabels=\" \
+        --subplot-below=\"-Dcase=bench_btree_lookup -DVALIDATE=0 -ybench_erased -Y0,1 -H0.33\"" \
+    --subplot-right="-Dcase=bench_btree_commit -DAMORTIZED=0 -ybench_readed --title=btree_commit -W0.33 --xticklabels= \
         --subplot-below=\"-Dcase=bench_btree_commit -DAMORTIZED=0 -ybench_proged --xticklabels=\" \
         --subplot-below=\"-Dcase=bench_btree_commit -DAMORTIZED=0 -ybench_erased -H0.33\"" \
-    --subplot-right="-Dcase=bench_btree_commit -DAMORTIZED=1 -ybench_readed --title='btree_commit (amortized)' -W0.33 --xticklabels= \
+    --subplot-right="-Dcase=bench_btree_commit -DAMORTIZED=1 -ybench_readed --title='btree_commit (amortized)' -W0.25 --xticklabels= \
         --subplot-below=\"-Dcase=bench_btree_commit -DAMORTIZED=1 -ybench_proged --xticklabels=\" \
         --subplot-below=\"-Dcase=bench_btree_commit -DAMORTIZED=1 -ybench_erased -H0.33\"" \
     "$([ "${2:-}" == order ] \
