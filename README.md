@@ -14,3 +14,8 @@
 ### Some btree variations
 
 ![btree_nothresh_thresh](bench_btree_cmp.sh.nothresh_thresh.svg)
+
+### Mtree
+
+![mtree_operations](bench_mtree.sh.svg)
+![mtree_order_operations](bench_mtree.sh.order.svg)
