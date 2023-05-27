@@ -24,6 +24,7 @@ then
         -obench_mtree.sh.raw.csv
     ./scripts/bench.py ./runners/bench_runner -j -Gnor \
         bench_mtree_commit \
+        bench_mtree_traversal \
         -DDISK_SIZE=1073741824 \
         -DN="range(1,$((count+1)),$step)" \
         -DAMORTIZED=1 \
@@ -124,10 +125,16 @@ HERE
     --subplot="-Dcase=bench_mtree_lookup -ybench_readed --ylabel=bench_readed --title=mtree_lookup --xticklabels=" \
         --subplot-below="-Dcase=bench_mtree_lookup -ybench_proged --ylabel=bench_proged -Y0,1 --xticklabels=" \
         --subplot-below="-Dcase=bench_mtree_lookup -ybench_erased --ylabel=bench_erased -Y0,1 -H0.33" \
-    --subplot-right="-Dcase=bench_mtree_commit -DAMORTIZED=0 -ybench_readed --title=mtree_commit -W0.5 --xticklabels= \
+    --subplot-right="-Dcase=bench_mtree_traversal -DVALIDATE=0 -ybench_readed --title='mtree_traversal (amortized)' -W0.5 --xticklabels= \
+        --subplot-below=\"-Dcase=bench_mtree_traversal -DVALIDATE=0 -ybench_proged -Y0,1 --xticklabels=\" \
+        --subplot-below=\"-Dcase=bench_mtree_traversal -DVALIDATE=0 -ybench_erased -Y0,1 -H0.33\"" \
+    --subplot-right="-Dcase=bench_mtree_traversal -DVALIDATE=1 -ybench_readed --title='mtree_traversal (validated,amortized)' -W0.33 --xticklabels= \
+        --subplot-below=\"-Dcase=bench_mtree_traversal -DVALIDATE=1 -ybench_proged -Y0,1 --xticklabels=\" \
+        --subplot-below=\"-Dcase=bench_mtree_traversal -DVALIDATE=1 -ybench_erased -Y0,1 -H0.33\"" \
+    --subplot-right="-Dcase=bench_mtree_commit -DAMORTIZED=0 -ybench_readed --title=mtree_commit -W0.25 --xticklabels= \
         --subplot-below=\"-Dcase=bench_mtree_commit -DAMORTIZED=0 -ybench_proged --xticklabels=\" \
         --subplot-below=\"-Dcase=bench_mtree_commit -DAMORTIZED=0 -ybench_erased -H0.33\"" \
-    --subplot-right="-Dcase=bench_mtree_commit -DAMORTIZED=1 -ybench_readed --title='mtree_commit (amortized)' -W0.33 --xticklabels= \
+    --subplot-right="-Dcase=bench_mtree_commit -DAMORTIZED=1 -ybench_readed --title='mtree_commit (amortized)' -W0.2 --xticklabels= \
         --subplot-below=\"-Dcase=bench_mtree_commit -DAMORTIZED=1 -ybench_proged --xticklabels=\" \
         --subplot-below=\"-Dcase=bench_mtree_commit -DAMORTIZED=1 -ybench_erased -H0.33\"" \
     "$([ "${2:-}" == order ] \

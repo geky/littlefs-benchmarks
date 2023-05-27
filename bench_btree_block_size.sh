@@ -146,16 +146,13 @@ HERE
     --y2 --yunits=B \
     --xlabel="count" \
     --title="btree operations" \
-    --subplot="-Dcase=bench_btree_lookup -DVALIDATE=0 -ybench_readed --ylabel=bench_readed --title=btree_lookup --xticklabels=" \
-        --subplot-below="-Dcase=bench_btree_lookup -DVALIDATE=0 -ybench_proged --ylabel=bench_proged -Y0,1 --xticklabels=" \
-        --subplot-below="-Dcase=bench_btree_lookup -DVALIDATE=0 -ybench_erased --ylabel=bench_erased -Y0,1 -H0.33" \
-    --subplot-right="-Dcase=bench_btree_lookup -DVALIDATE=1 -ybench_readed --title='btree_lookup (validated)' -W0.5 --xticklabels= \
-        --subplot-below=\"-Dcase=bench_btree_lookup -DVALIDATE=0 -ybench_proged -Y0,1 --xticklabels=\" \
-        --subplot-below=\"-Dcase=bench_btree_lookup -DVALIDATE=0 -ybench_erased -Y0,1 -H0.33\"" \
-    --subplot-right="-Dcase=bench_btree_commit -DAMORTIZED=0 -ybench_readed --title=btree_commit -W0.33 --xticklabels= \
+    --subplot="-Dcase=bench_btree_lookup -ybench_readed --ylabel=bench_readed --title=btree_lookup --xticklabels=" \
+        --subplot-below="-Dcase=bench_btree_lookup -ybench_proged --ylabel=bench_proged -Y0,1 --xticklabels=" \
+        --subplot-below="-Dcase=bench_btree_lookup -ybench_erased --ylabel=bench_erased -Y0,1 -H0.33" \
+    --subplot-right="-Dcase=bench_btree_commit -DAMORTIZED=0 -ybench_readed --title=btree_commit -W0.5 --xticklabels= \
         --subplot-below=\"-Dcase=bench_btree_commit -DAMORTIZED=0 -ybench_proged --xticklabels=\" \
         --subplot-below=\"-Dcase=bench_btree_commit -DAMORTIZED=0 -ybench_erased -H0.33\"" \
-    --subplot-right="-Dcase=bench_btree_commit -DAMORTIZED=1 -ybench_readed --title='btree_commit (amortized)' -W0.25 --xticklabels= \
+    --subplot-right="-Dcase=bench_btree_commit -DAMORTIZED=1 -ybench_readed --title='btree_commit (amortized)' -W0.33 --xticklabels= \
         --subplot-below=\"-Dcase=bench_btree_commit -DAMORTIZED=1 -ybench_proged --xticklabels=\" \
         --subplot-below=\"-Dcase=bench_btree_commit -DAMORTIZED=1 -ybench_erased -H0.33\"" \
     --colors=" \
