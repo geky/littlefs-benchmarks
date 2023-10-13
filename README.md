@@ -19,3 +19,9 @@
 
 ![mtree_operations](bench_mtree.sh.svg)
 ![mtree_order_operations](bench_mtree.sh.order.svg)
+
+### Many files
+
+![manyfiles_cmp](cmp_manyfiles.sh.svg)
+![manyfiles_experimental](bench_manyfiles.sh.svg)
+![manyfiles_current](bench_manyfiles.sh.bc.svg)

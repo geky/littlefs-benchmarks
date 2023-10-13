@@ -11,32 +11,46 @@ step="${step:-1}"
 samples="${samples:-1}"
 echo "benching $count,$step,$samples"
 
+# extra title info
+title="${2:-}"
+title="${title:+ - $title}"
+
+# prefix for outputs
+prefix="${3:-}"
+prefix="${prefix:+.$prefix}"
+
+# runner to use
+runner="${4:-./runners/bench_runner}"
+
 # run the benches
 if [[ $count -ne 0 ]]
 then
     # benchmark raw create time
-    ./scripts/bench.py -j -Gnor \
+    ./scripts/bench.py -R$runner -j -Gnor \
         bench_manyfiles_create \
         -DDISK_SIZE=1073741824 \
+        -DERASE_COUNT=262144 \
         -DN="range(1,$((count+1)),$step)" \
         -DAMORTIZED=0 \
         -DSEED="range(1,$((samples+1)))" \
-        -o"$0".create_raw.csv
+        -o"$0$prefix.create_raw.csv"
     # benchmark amortized create time
-    ./scripts/bench.py -j -Gnor \
+    ./scripts/bench.py -R$runner -j -Gnor \
         bench_manyfiles_create \
         -DDISK_SIZE=1073741824 \
+        -DERASE_COUNT=262144 \
         -DN="range(1,$((count+1)),$step)" \
         -DAMORTIZED=1 \
         -DSEED="range(1,$((samples+1)))" \
-        -o"$0".create_amor.csv
+        -o"$0$prefix.create_amor.csv"
     # benchmark read time
-    ./scripts/bench.py -j -Gnor \
+    ./scripts/bench.py -R$runner -j -Gnor \
         bench_manyfiles_read \
         -DDISK_SIZE=1073741824 \
+        -DERASE_COUNT=262144 \
         -DN="range(1,$((count+1)),$step)" \
         -DSEED="range(1,$((samples+1)))" \
-        -o"$0".read.csv
+        -o"$0$prefix.read.csv"
 fi
 
 
@@ -46,9 +60,9 @@ import csv
 import collections as co
 ys = ['bench_readed', 'bench_proged', 'bench_erased']
 for bench in ['create_raw', 'read']:
-    print('avging %s' % ('$0.%s.csv' % bench))
+    print('avging %s' % ('$0$prefix.%s.csv' % bench))
     results = co.OrderedDict()
-    with open('$0.%s.csv' % bench) as f:
+    with open('$0$prefix.%s.csv' % bench) as f:
         reader = csv.DictReader(f)
         fieldnames = reader.fieldnames.copy()
         fieldnames.remove('SEED')
@@ -70,7 +84,7 @@ for bench in ['create_raw', 'read']:
             for y in ys:
                 r[y+'_avg'] = r[y+'_sum'] / r[y+'_count']
 
-    with open('$0.%s_.csv' % bench, 'w') as f:
+    with open('$0$prefix.%s_.csv' % bench, 'w') as f:
         writer = csv.DictWriter(f, fieldnames + ['MODE'], extrasaction='ignore')
         writer.writeheader()
         for r in results.values():
@@ -84,9 +98,9 @@ python << HERE
 import csv
 import collections as co
 ys = ['bench_readed', 'bench_proged', 'bench_erased']
-print('avging %s' % '$0.create_amor.csv')
+print('avging %s' % '$0$prefix.create_amor.csv')
 results = co.OrderedDict()
-with open('$0.create_amor.csv') as f:
+with open('$0$prefix.create_amor.csv') as f:
     reader = csv.DictReader(f)
     fieldnames = reader.fieldnames.copy()
     # merge by seed
@@ -111,7 +125,7 @@ with open('$0.create_amor.csv') as f:
         for y in ys:
             r[y+'_avg'] = r[y+'_sum'] / r[y+'_count']
 
-with open('$0.create_amor_.csv', 'w') as f:
+with open('$0$prefix.create_amor_.csv', 'w') as f:
     writer = csv.DictWriter(f, fieldnames + ['MODE'], extrasaction='ignore')
     writer.writeheader()
     for r in results.values():
@@ -122,13 +136,13 @@ HERE
 
 # plot results
 ./scripts/plotmpl.py \
-    "$0".create_raw_.csv \
-    "$0".create_amor_.csv \
-    "$0".read_.csv \
-    -o"$0".svg \
+    "$0$prefix.create_raw_.csv" \
+    "$0$prefix.create_amor_.csv" \
+    "$0$prefix.read_.csv" \
+    -o"$0$prefix.svg" \
     -W1600 -H700 \
     --ggplot \
-    --title="File create overhead" \
+    --title="littlefs - Many-file overhead$title" \
     -xN \
     -bSIZE \
     -bMODE \
@@ -190,8 +204,8 @@ HERE
         #55a8683f,#55a8683f,#55a8683f, "
 
 # and generate a simple webpage for easy viewing
-cat << HERE > "$0".html
+cat << HERE > "$0$prefix.html"
     <body style="background-color:#443333;">
-    <img src="$(basename $0).svg">
+    <img src="$(basename $0)$prefix.svg">
 HERE
 
