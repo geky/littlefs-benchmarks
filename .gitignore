@@ -1,0 +1,14 @@
+# Intermediate CSV files
+bench_rbyd.sh.amor.csv
+bench_rbyd.sh.avg.csv
+
+bench_btree.sh.amor.csv
+bench_btree.sh.avg.csv
+
+# There's not much value to pushing html files atm
+*.html
+
+# Compilation output
+*.o
+*.d
+*.b.*

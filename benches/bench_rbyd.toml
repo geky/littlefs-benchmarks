@@ -1,0 +1,524 @@
+# Bench our low-level rbyd data-structure
+
+# set block_size to the full size of disk so we can test arbitrarily
+# large rbyd trees, we don't really care about block sizes at this
+# abstraction level
+defines.BLOCK_SIZE = 'DISK_SIZE'
+
+[cases.bench_rbyd_attr_append]
+# 0 = in-order
+# 1 = reversed-order
+# 2 = random-order
+defines.ORDER = [0, 1, 2]
+defines.N = 256
+defines.STEP = 1
+defines.SEED = 42
+defines.SIZE = 4
+in = 'lfs.c'
+code = '''
+    lfs_t lfs;
+    lfs_init(&lfs, CFG) => 0;
+
+    for (lfs_size_t n = 0; n < N; n += STEP) {
+        lfsr_rbyd_t rbyd = {
+            .block = 0,
+            .eoff = 0,
+            .cksum = 0,
+            .trunk = 0,
+            .weight = 0,
+        };
+        lfs_bd_erase(&lfs, rbyd.block) => 0;
+
+        // create N attrs
+        //
+        // NOTE we only have 256 user attributes, so this benchmark is
+        // a bit limited
+        uint32_t prng = SEED;
+        for (lfs_size_t i = 0; i < n; i++) {
+            lfs_off_t i_
+                    = (ORDER == 0) ? i
+                    : (ORDER == 1) ? (n-1-i)
+                    : BENCH_PRNG(&prng) % n;
+            uint8_t wbuf[SIZE];
+            memset(wbuf, 'a'+(BENCH_PRNG(&prng) % 26), SIZE);
+            lfsr_rbyd_commit(&lfs, &rbyd, LFSR_ATTRS(
+                    LFSR_ATTR(-1,
+                        UATTR(i_ & 0xff), 0, BUF(wbuf, SIZE)))) => 0;
+        }
+
+        // append an attr
+        BENCH_START("append", n, STEP);
+        lfs_off_t i_ = BENCH_PRNG(&prng) % (n+1);
+        uint8_t wbuf[SIZE];
+        memset(wbuf, 'a'+(BENCH_PRNG(&prng) % 26), SIZE);
+        lfsr_rbyd_commit(&lfs, &rbyd, LFSR_ATTRS(
+                LFSR_ATTR(-1,
+                    UATTR(i_ & 0xff), 0, BUF(wbuf, SIZE)))) => 0;
+        BENCH_STOP("append");
+
+        // test that our append worked
+        lfsr_data_t data_;
+        lfsr_rbyd_lookup(&lfs, &rbyd, -1, LFSR_TAG_UATTR(i_ & 0xff),
+                NULL, &data_) => 0;
+        assert(lfsr_data_size(&data_) == SIZE);
+        uint8_t rbuf[SIZE];
+        lfsr_data_read(&lfs, &data_, rbuf, SIZE) => SIZE;
+        assert(memcmp(rbuf, wbuf, SIZE) == 0);
+    }
+'''
+
+[cases.bench_rbyd_attr_remove]
+# 0 = in-order
+# 1 = reversed-order
+# 2 = random-order
+defines.ORDER = [0, 1, 2]
+defines.N = 256
+defines.STEP = 1
+defines.SEED = 42
+defines.SIZE = 4
+in = 'lfs.c'
+code = '''
+    lfs_t lfs;
+    lfs_init(&lfs, CFG) => 0;
+
+    for (lfs_size_t n = 0; n < N; n += STEP) {
+        lfsr_rbyd_t rbyd = {
+            .block = 0,
+            .eoff = 0,
+            .cksum = 0,
+            .trunk = 0,
+            .weight = 0,
+        };
+        lfs_bd_erase(&lfs, rbyd.block) => 0;
+
+        // create N attrs
+        //
+        // NOTE we only have 256 user attributes, so this benchmark is
+        // a bit limited
+        uint32_t prng = SEED;
+        for (lfs_size_t i = 0; i < n; i++) {
+            lfs_off_t i_
+                    = (ORDER == 0) ? i
+                    : (ORDER == 1) ? (n-1-i)
+                    : BENCH_PRNG(&prng) % n;
+            uint8_t wbuf[SIZE];
+            memset(wbuf, 'a'+(BENCH_PRNG(&prng) % 26), SIZE);
+            lfsr_rbyd_commit(&lfs, &rbyd, LFSR_ATTRS(
+                    LFSR_ATTR(-1,
+                        UATTR(i_ & 0xff), 0, BUF(wbuf, SIZE)))) => 0;
+        }
+
+        // remove an attr
+        BENCH_START("remove", n, STEP);
+        lfs_off_t i_ = 0;
+        if (n > 0) {
+            i_ = BENCH_PRNG(&prng) % n;
+            lfsr_rbyd_commit(&lfs, &rbyd, LFSR_ATTRS(
+                    LFSR_ATTR(-1,
+                        RM(UATTR(i_ & 0xff)), 0, NULL))) => 0;
+        }
+        BENCH_STOP("remove");
+
+        // test that our remove worked
+        lfsr_data_t data_;
+        lfsr_rbyd_lookup(&lfs, &rbyd, -1, LFSR_TAG_UATTR(i_ & 0xff),
+                NULL, &data_) => LFS_ERR_NOENT;
+    }
+'''
+
+[cases.bench_rbyd_attr_fetch]
+# 0 = in-order
+# 1 = reversed-order
+# 2 = random-order
+defines.ORDER = [0, 1, 2]
+defines.N = 256
+defines.STEP = 1
+defines.SEED = 42
+defines.SIZE = 4
+in = 'lfs.c'
+code = '''
+    lfs_t lfs;
+    lfs_init(&lfs, CFG) => 0;
+
+    lfsr_rbyd_t rbyd = {
+        .block = 0,
+        .eoff = 0,
+        .cksum = 0,
+        .trunk = 0,
+        .weight = 0,
+    };
+    lfs_bd_erase(&lfs, rbyd.block) => 0;
+
+    // create N attrs
+    //
+    // NOTE we only have 256 user attributes, so this benchmark is
+    // a bit limited
+    uint32_t prng = SEED;
+    for (lfs_size_t i = 0; i < N; i++) {
+        lfs_off_t i_
+                = (ORDER == 0) ? i
+                : (ORDER == 1) ? (N-1-i)
+                : BENCH_PRNG(&prng) % N;
+        uint8_t wbuf[SIZE];
+        memset(wbuf, 'a'+(BENCH_PRNG(&prng) % 26), SIZE);
+        lfsr_rbyd_commit(&lfs, &rbyd, LFSR_ATTRS(
+                LFSR_ATTR(-1,
+                    UATTR(i_ & 0xff), 0, BUF(wbuf, SIZE)))) => 0;
+
+        if (i % STEP == 0) {
+            // fetch the rbyd
+            BENCH_START("fetch", i, STEP);
+            lfsr_rbyd_t rbyd_;
+            lfsr_rbyd_fetch(&lfs, &rbyd_, rbyd.block, CFG->block_size) => 0;
+            BENCH_STOP("fetch");
+        }
+    }
+'''
+
+[cases.bench_rbyd_attr_lookup]
+# 0 = in-order
+# 1 = reversed-order
+# 2 = random-order
+defines.ORDER = [0, 1, 2]
+defines.N = 256
+defines.STEP = 1
+defines.SEED = 42
+defines.SIZE = 4
+in = 'lfs.c'
+code = '''
+    lfs_t lfs;
+    lfs_init(&lfs, CFG) => 0;
+
+    lfsr_rbyd_t rbyd = {
+        .block = 0,
+        .eoff = 0,
+        .cksum = 0,
+        .trunk = 0,
+        .weight = 0,
+    };
+    lfs_bd_erase(&lfs, rbyd.block) => 0;
+
+    // create N attrs
+    //
+    // NOTE we only have 256 user attributes, so this benchmark is
+    // a bit limited
+    uint32_t prng = SEED;
+    for (lfs_size_t i = 0; i < N; i++) {
+        lfs_off_t i_
+                = (ORDER == 0) ? i
+                : (ORDER == 1) ? (N-1-i)
+                : BENCH_PRNG(&prng) % N;
+        uint8_t wbuf[SIZE];
+        memset(wbuf, 'a'+(BENCH_PRNG(&prng) % 26), SIZE);
+        lfsr_rbyd_commit(&lfs, &rbyd, LFSR_ATTRS(
+                LFSR_ATTR(-1,
+                    UATTR(i_ & 0xff), 0, BUF(wbuf, SIZE)))) => 0;
+
+        if (i % STEP == 0) {
+            // lookup an attr
+            BENCH_START("lookup", i, STEP);
+            i_ = BENCH_PRNG(&prng) % N;
+            lfsr_data_t data_;
+            int err = lfsr_rbyd_lookup(&lfs, &rbyd,
+                    -1, LFSR_TAG_UATTR(i_ & 0xff),
+                    NULL, &data_);
+            // note that random order may have some collisions
+            assert(!err || err == LFS_ERR_NOENT);
+            BENCH_STOP("lookup");
+        }
+    }
+'''
+
+[cases.bench_rbyd_attr_usage]
+# 0 = in-order
+# 1 = reversed-order
+# 2 = random-order
+defines.ORDER = [0, 1, 2]
+defines.N = 256
+defines.STEP = 1
+defines.SEED = 42
+defines.SIZE = 4
+in = 'lfs.c'
+code = '''
+    lfs_t lfs;
+    lfs_init(&lfs, CFG) => 0;
+
+    lfsr_rbyd_t rbyd = {
+        .block = 0,
+        .eoff = 0,
+        .cksum = 0,
+        .trunk = 0,
+        .weight = 0,
+    };
+    lfs_bd_erase(&lfs, rbyd.block) => 0;
+
+    // create N attrs
+    //
+    // NOTE we only have 256 user attributes, so this benchmark is
+    // a bit limited
+    uint32_t prng = SEED;
+    for (lfs_size_t i = 0; i < N; i++) {
+        lfs_off_t i_
+                = (ORDER == 0) ? i
+                : (ORDER == 1) ? (N-1-i)
+                : BENCH_PRNG(&prng) % N;
+        uint8_t wbuf[SIZE];
+        memset(wbuf, 'a'+(BENCH_PRNG(&prng) % 26), SIZE);
+        lfsr_rbyd_commit(&lfs, &rbyd, LFSR_ATTRS(
+                LFSR_ATTR(-1,
+                    UATTR(i_ & 0xff), 0, BUF(wbuf, SIZE)))) => 0;
+
+        if (i % STEP == 0) {
+            // measure the disk usage
+            BENCH_RESULT("usage", i, STEP, rbyd.eoff);
+        }
+    }
+'''
+
+[cases.bench_rbyd_id_create]
+# 0 = in-order
+# 1 = reversed-order
+# 2 = random-order
+defines.ORDER = [0, 1, 2]
+defines.N = 4096
+defines.STEP = 8
+defines.SEED = 42
+defines.SIZE = 4
+in = 'lfs.c'
+code = '''
+    lfs_t lfs;
+    lfs_init(&lfs, CFG) => 0;
+
+    for (lfs_size_t n = 0; n < N; n += STEP) {
+        lfsr_rbyd_t rbyd = {
+            .block = 0,
+            .eoff = 0,
+            .cksum = 0,
+            .trunk = 0,
+            .weight = 0,
+        };
+        lfs_bd_erase(&lfs, rbyd.block) => 0;
+
+        // create commits, note we need to take care to generate
+        // indexes within a valid range as the rbyd grows
+        uint32_t prng = SEED;
+        for (lfs_size_t i = 0; i < n; i++) {
+            lfs_off_t i_
+                    = (ORDER == 0) ? i
+                    : (ORDER == 1) ? 0
+                    : BENCH_PRNG(&prng) % (rbyd.weight+1);
+            uint8_t wbuf[SIZE];
+            memset(wbuf, 'a'+(BENCH_PRNG(&prng) % 26), SIZE);
+            lfsr_rbyd_commit(&lfs, &rbyd, LFSR_ATTRS(
+                    LFSR_ATTR(i_, REG, +1, BUF(wbuf, SIZE)))) => 0;
+        }
+
+        // create an attr
+        BENCH_START("create", n, STEP);
+        lfs_off_t i_ = BENCH_PRNG(&prng) % (n+1);
+        uint8_t wbuf[SIZE];
+        memset(wbuf, 'a'+(BENCH_PRNG(&prng) % 26), SIZE);
+        lfsr_rbyd_commit(&lfs, &rbyd, LFSR_ATTRS(
+                LFSR_ATTR(i_, REG, +1, BUF(wbuf, SIZE)))) => 0;
+        BENCH_STOP("create");
+
+        // test that our create worked
+        lfsr_data_t data_;
+        lfsr_rbyd_lookup(&lfs, &rbyd, i_, LFSR_TAG_REG,
+                NULL, &data_) => 0;
+        assert(lfsr_data_size(&data_) == SIZE);
+        uint8_t rbuf[SIZE];
+        lfsr_data_read(&lfs, &data_, rbuf, SIZE) => SIZE;
+        assert(memcmp(rbuf, wbuf, SIZE) == 0);
+    }
+'''
+
+[cases.bench_rbyd_id_delete]
+# 0 = in-order
+# 1 = reversed-order
+# 2 = random-order
+defines.ORDER = [0, 1, 2]
+defines.N = 4096
+defines.STEP = 8
+defines.SEED = 42
+defines.SIZE = 4
+in = 'lfs.c'
+code = '''
+    lfs_t lfs;
+    lfs_init(&lfs, CFG) => 0;
+
+    for (lfs_size_t n = 0; n < N; n += STEP) {
+        lfsr_rbyd_t rbyd = {
+            .block = 0,
+            .eoff = 0,
+            .cksum = 0,
+            .trunk = 0,
+            .weight = 0,
+        };
+        lfs_bd_erase(&lfs, rbyd.block) => 0;
+
+        // create commits, note we need to take care to generate
+        // indexes within a valid range as the rbyd grows
+        uint32_t prng = SEED;
+        for (lfs_size_t i = 0; i < n; i++) {
+            lfs_off_t i_
+                    = (ORDER == 0) ? i
+                    : (ORDER == 1) ? 0
+                    : BENCH_PRNG(&prng) % (rbyd.weight+1);
+            uint8_t wbuf[SIZE];
+            memset(wbuf, 'a'+(BENCH_PRNG(&prng) % 26), SIZE);
+            lfsr_rbyd_commit(&lfs, &rbyd, LFSR_ATTRS(
+                    LFSR_ATTR(i_, REG, +1, BUF(wbuf, SIZE)))) => 0;
+        }
+
+        // delete an attr
+        BENCH_START("delete", n, STEP);
+        lfs_off_t i_ = 0;
+        if (n > 0) {
+            i_ = BENCH_PRNG(&prng) % n;
+            lfsr_rbyd_commit(&lfs, &rbyd, LFSR_ATTRS(
+                    LFSR_ATTR(i_, RM, -1, NULL))) => 0;
+        }
+        BENCH_STOP("delete");
+
+        // test that our delete worked
+        assert(rbyd.weight == lfs_smax32(n-1, 0));
+    }
+'''
+
+[cases.bench_rbyd_id_fetch]
+# 0 = in-order
+# 1 = reversed-order
+# 2 = random-order
+defines.ORDER = [0, 1, 2]
+defines.N = 4096
+defines.STEP = 8
+defines.SEED = 42
+defines.SIZE = 4
+in = 'lfs.c'
+code = '''
+    lfs_t lfs;
+    lfs_init(&lfs, CFG) => 0;
+
+    lfsr_rbyd_t rbyd = {
+        .block = 0,
+        .eoff = 0,
+        .cksum = 0,
+        .trunk = 0,
+        .weight = 0,
+    };
+    lfs_bd_erase(&lfs, rbyd.block) => 0;
+
+    // create commits, note we need to take care to generate
+    // indexes within a valid range as the rbyd grows
+    uint32_t prng = SEED;
+    for (lfs_size_t i = 0; i < N; i++) {
+        lfs_off_t i_
+                = (ORDER == 0) ? i
+                : (ORDER == 1) ? 0
+                : BENCH_PRNG(&prng) % (rbyd.weight+1);
+        uint8_t wbuf[SIZE];
+        memset(wbuf, 'a'+(BENCH_PRNG(&prng) % 26), SIZE);
+        lfsr_rbyd_commit(&lfs, &rbyd, LFSR_ATTRS(
+                LFSR_ATTR(i_, REG, +1, BUF(wbuf, SIZE)))) => 0;
+
+        if (i % STEP == 0) {
+            // fetch the rbyd
+            BENCH_START("fetch", i, STEP);
+            lfsr_rbyd_t rbyd_;
+            lfsr_rbyd_fetch(&lfs, &rbyd_, rbyd.block, CFG->block_size) => 0;
+            BENCH_STOP("fetch");
+        }
+    }
+'''
+
+[cases.bench_rbyd_id_lookup]
+# 0 = in-order
+# 1 = reversed-order
+# 2 = random-order
+defines.ORDER = [0, 1, 2]
+defines.N = 4096
+defines.STEP = 8
+defines.SEED = 42
+defines.SIZE = 4
+in = 'lfs.c'
+code = '''
+    lfs_t lfs;
+    lfs_init(&lfs, CFG) => 0;
+
+    lfsr_rbyd_t rbyd = {
+        .block = 0,
+        .eoff = 0,
+        .cksum = 0,
+        .trunk = 0,
+        .weight = 0,
+    };
+    lfs_bd_erase(&lfs, rbyd.block) => 0;
+
+    // create commits, note we need to take care to generate
+    // indexes within a valid range as the rbyd grows
+    uint32_t prng = SEED;
+    for (lfs_size_t i = 0; i < N; i++) {
+        lfs_off_t i_
+                = (ORDER == 0) ? i
+                : (ORDER == 1) ? 0
+                : BENCH_PRNG(&prng) % (rbyd.weight+1);
+        uint8_t wbuf[SIZE];
+        memset(wbuf, 'a'+(BENCH_PRNG(&prng) % 26), SIZE);
+        lfsr_rbyd_commit(&lfs, &rbyd, LFSR_ATTRS(
+                LFSR_ATTR(i_, REG, +1, BUF(wbuf, SIZE)))) => 0;
+
+        if (i % STEP == 0) {
+            // lookup an attr
+            BENCH_START("lookup", i, STEP);
+            i_ = BENCH_PRNG(&prng) % (i+1);
+            lfsr_data_t data_;
+            lfsr_rbyd_lookup(&lfs, &rbyd, i_, LFSR_TAG_REG,
+                    NULL, &data_) => 0;
+            BENCH_STOP("lookup");
+        }
+    }
+'''
+
+[cases.bench_rbyd_id_usage]
+# 0 = in-order
+# 1 = reversed-order
+# 2 = random-order
+defines.ORDER = [0, 1, 2]
+defines.N = 4096
+defines.STEP = 8
+defines.SEED = 42
+defines.SIZE = 4
+in = 'lfs.c'
+code = '''
+    lfs_t lfs;
+    lfs_init(&lfs, CFG) => 0;
+
+    lfsr_rbyd_t rbyd = {
+        .block = 0,
+        .eoff = 0,
+        .cksum = 0,
+        .trunk = 0,
+        .weight = 0,
+    };
+    lfs_bd_erase(&lfs, rbyd.block) => 0;
+
+    // create commits, note we need to take care to generate
+    // indexes within a valid range as the rbyd grows
+    uint32_t prng = SEED;
+    for (lfs_size_t i = 0; i < N; i++) {
+        lfs_off_t i_
+                = (ORDER == 0) ? i
+                : (ORDER == 1) ? 0
+                : BENCH_PRNG(&prng) % (rbyd.weight+1);
+        uint8_t wbuf[SIZE];
+        memset(wbuf, 'a'+(BENCH_PRNG(&prng) % 26), SIZE);
+        lfsr_rbyd_commit(&lfs, &rbyd, LFSR_ATTRS(
+                LFSR_ATTR(i_, REG, +1, BUF(wbuf, SIZE)))) => 0;
+
+        if (i % STEP == 0) {
+            // measure the disk usage
+            BENCH_RESULT("usage", i, STEP, rbyd.eoff);
+        }
+    }
+'''
