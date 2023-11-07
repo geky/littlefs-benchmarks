@@ -9,12 +9,12 @@ shift || true
 # allow --github for github formatting
 # rest gets passed to bench.py
 args+=()
-style="--ggplot --dark"
+dark=
 while [[ "$#" -gt 0 ]]
 do
     case "$1" in 
-        --light)
-            style="--ggplot"
+        --dark)
+            dark=1
         ;;
         *)
             args+=("$1")
@@ -52,7 +52,7 @@ echo "averaging $0.avg.csv"
 echo "plotting $0.svg"
 ./scripts/plotmpl.py "$0.avg.csv" -o"$0.attr.svg" \
     -W1750 -H500 \
-    $style \
+    --ggplot $([[ "$dark" ]] && echo "--dark") \
     -xbench_iter \
     -bORDER \
     -bbench_agg \
@@ -138,7 +138,7 @@ echo "plotting $0.svg"
 echo "plotting $0.svg"
 ./scripts/plotmpl.py "$0.avg.csv" -o"$0.id.svg" \
     -W1750 -H500 \
-    $style \
+    --ggplot $([[ "$dark" ]] && echo "--dark") \
     -xbench_iter \
     -bORDER \
     -bbench_agg \
@@ -224,7 +224,9 @@ echo "plotting $0.svg"
 # and a simple webpage for easy viewing
 echo "generating $0.html"
 cat << HERE > "$0.html"
-    <body style="background-color:#443333;">
+    $([[ "$dark" ]] \
+        && echo '<body style="background-color:#443333;">' \
+        || echo '<body style="background-color:#ccbbbb;">')
     <img src="$(basename $0).attr.svg">
     <p></p>
     <img src="$(basename $0).id.svg">

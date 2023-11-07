@@ -11,15 +11,15 @@ shift || true
 # rest gets passed to bench.py
 args+=()
 cmp_bs=
-style="--ggplot --dark"
+dark=
 while [[ "$#" -gt 0 ]]
 do
     case "$1" in 
         --cmp-bs)
             cmp_bs=1
         ;;
-        --light)
-            style="--ggplot"
+        --dark)
+            dark=1
         ;;
         *)
             args+=("$1")
@@ -60,7 +60,7 @@ echo "averaging $0.avg.csv"
 echo "plotting $0.svg"
 ./scripts/plotmpl.py "$0.avg.csv" -o"$0.svg" \
     -W1750 -H750 \
-    $style \
+    --ggplot $([[ "$dark" ]] && echo "--dark") \
     -xbench_iter \
     -bORDER \
     -bBLOCK_SIZE \
@@ -188,7 +188,9 @@ echo "plotting $0.svg"
 # a simple webpage for easy viewing
 echo "generating $0.html"
 cat << HERE > "$0.html"
-    <body style="background-color:#443333;">
+    $([[ "$dark" ]] \
+        && echo '<body style="background-color:#443333;">' \
+        || echo '<body style="background-color:#ccbbbb;">')
     <img src="$(basename $0).svg">
 HERE
 
