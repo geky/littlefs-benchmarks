@@ -18,8 +18,8 @@ do
         --cmp-bs)
             cmp_bs=1
         ;;
-        --github)
-            style="--ggplot --github"
+        --light)
+            style="--ggplot"
         ;;
         *)
             args+=("$1")

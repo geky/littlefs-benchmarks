@@ -13,8 +13,8 @@ style="--ggplot --dark"
 while [[ "$#" -gt 0 ]]
 do
     case "$1" in 
-        --github)
-            style="--ggplot --github"
+        --light)
+            style="--ggplot"
         ;;
         *)
             args+=("$1")
