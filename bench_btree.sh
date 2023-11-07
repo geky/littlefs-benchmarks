@@ -37,7 +37,7 @@ then
         -DSEED="range($samples)" \
         $([[ "$cmp_bs" ]] && echo "\
             -DORDER=2 \
-            -DBLOCK_SIZE=4096,8192,16384,32768") \
+            -DBLOCK_SIZE=1024,2048,4096,8192,16384") \
         ${args[@]}
 fi
 
