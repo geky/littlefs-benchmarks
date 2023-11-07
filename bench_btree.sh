@@ -7,7 +7,7 @@ samples="${1:-1}"
 shift || true
 
 # --cmp-bs => compare block sizes
-# allow --github for github formatting
+# allow --dark for dark mode
 # rest gets passed to bench.py
 args+=()
 cmp_bs=

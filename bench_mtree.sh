@@ -2,158 +2,229 @@
 
 set -eu -o pipefail
 
-count="$(echo "${1:-}" | cut -d, -f1)"
-step="$(echo "${1:-}," | cut -d, -f2)"
-samples="$(echo "${1:-},," | cut -d, -f3)"
-count="${count:-1024}"
-step="${step:-1}"
-samples="${samples:-1}"
-echo "benching $count,$step,$samples"
+# first arg = samples
+samples="${1:-1}"
+shift || true
+
+# --cmp-bs => compare block sizes
+# allow --dark for dark mode
+# rest gets passed to bench.py
+args+=()
+cmp_bs=
+dark=
+while [[ "$#" -gt 0 ]]
+do
+    case "$1" in 
+        --cmp-bs)
+            cmp_bs=1
+        ;;
+        --dark)
+            dark=1
+        ;;
+        *)
+            args+=("$1")
+        ;;
+    esac
+    shift
+done
 
 # run benchmarks
-if [[ $count -ne 0 ]]
+echo "benching $samples samples $0.csv"
+if [[ "$samples" -gt 0 ]]
 then
-    # block_size = 4096
-    ./scripts/bench.py ./runners/bench_runner -j -Gnor \
-        bench_mtree_lookup \
-        bench_mtree_commit \
-        -DDISK_SIZE=1073741824 \
-        -DN="range(1,$((count+1)),$step)" \
-        -DAMORTIZED=0 \
-        -DSEED="range(1,$((samples+1)))" \
-        -obench_mtree.sh.raw.csv
-    ./scripts/bench.py ./runners/bench_runner -j -Gnor \
-        bench_mtree_commit \
-        bench_mtree_traversal \
-        -DDISK_SIZE=1073741824 \
-        -DN="range(1,$((count+1)),$step)" \
-        -DAMORTIZED=1 \
-        -DSEED="range(1,$((samples+1)))" \
-        -obench_mtree.sh.amortized.csv
+    ./scripts/bench.py -j -Gnor -o"$0.csv" \
+        -B bench_mtree \
+        -DSEED="range($samples)" \
+        $([[ "$cmp_bs" ]] && echo "\
+            -DORDER=2 \
+            -DBLOCK_SIZE=2048,4096,8192,16384") \
+        ${args[@]}
 fi
 
-# actually amortize to amortized results
-# find avg/min/max of results
-python << HERE
-import csv
-import collections as co
-results = co.OrderedDict()
-ys = ['bench_readed', 'bench_proged', 'bench_erased']
-with open('bench_mtree.sh.raw.csv') as f:
-    reader = csv.DictReader(f)
-    fieldnames = reader.fieldnames.copy()
-    fieldnames.remove('SEED')
-    for r in reader:
-        try:
-            k = tuple(r[k] for k in fieldnames if k not in ys)
-            r_ = results.get(k, {})
-            for y in ys:
-                r[y] = int(r[y])
-                r[y+'_sum'] = r[y] + r_.get(y+'_sum', 0)
-                r[y+'_min'] = min(r[y], r_.get(y+'_min', r[y]))
-                r[y+'_max'] = max(r[y], r_.get(y+'_max', r[y]))
-                r[y+'_count'] = 1 + r_.get(y+'_count', 0)
-            results[k] = r
-        except ValueError:
-            pass
-
-    for r in results.values():
-        for y in ys:
-            r[y+'_avg'] = r[y+'_sum'] / r[y+'_count']
-
-with open('bench_mtree.sh.raw_fixed.csv', 'w') as f:
-    writer = csv.DictWriter(f, fieldnames + ['MODE'], extrasaction='ignore')
-    writer.writeheader()
-    for r in results.values():
-        writer.writerow(r | {'MODE': 'avg'} | {y: r[y+'_avg'] for y in ys})
-        writer.writerow(r | {'MODE': 'bnd'} | {y: r[y+'_min'] for y in ys})
-        writer.writerow(r | {'MODE': 'bnd'} | {y: r[y+'_max'] for y in ys})
-HERE
-python << HERE
-import csv
-import collections as co
-results = co.OrderedDict()
-ys = ['bench_readed', 'bench_proged', 'bench_erased']
-with open('bench_mtree.sh.amortized.csv') as f:
-    reader = csv.DictReader(f)
-    fieldnames = reader.fieldnames.copy()
-    # merge by seed
-    fieldnames.remove('SEED')
-    for r in reader:
-        try:
-            k = tuple(r[k] for k in fieldnames if k not in ys)
-            r_ = results.get(k, {})
-            for y in ys:
-                # amortize
-                r[y] = int(r[y]) / int(r['N'])
-                # avg/min/max
-                r[y+'_sum'] = r[y] + r_.get(y+'_sum', 0)
-                r[y+'_min'] = min(r[y], r_.get(y+'_min', r[y]))
-                r[y+'_max'] = max(r[y], r_.get(y+'_max', r[y]))
-                r[y+'_count'] = 1 + r_.get(y+'_count', 0)
-            results[k] = r
-        except ValueError:
-            pass
-
-    for r in results.values():
-        for y in ys:
-            r[y+'_avg'] = r[y+'_sum'] / r[y+'_count']
-
-with open('bench_mtree.sh.amortized_fixed.csv', 'w') as f:
-    writer = csv.DictWriter(f, fieldnames + ['MODE'], extrasaction='ignore')
-    writer.writeheader()
-    for r in results.values():
-        writer.writerow(r | {'MODE': 'avg'} | {y: r[y+'_avg'] for y in ys})
-        writer.writerow(r | {'MODE': 'bnd'} | {y: r[y+'_min'] for y in ys})
-        writer.writerow(r | {'MODE': 'bnd'} | {y: r[y+'_max'] for y in ys})
-HERE
+# compute amors/avgs
+echo "amortizing $0.amor.csv"
+./scripts/amor.py "$0.csv" -o "$0.amor.csv" \
+    --amor --per \
+    -mbench_meas \
+    -ibench_iter \
+    -nbench_size \
+    -fbench_readed -fbench_proged -fbench_erased
+echo "averaging $0.avg.csv"
+./scripts/avg.py "$0.csv" "$0.amor.csv" -o "$0.avg.csv" \
+    --avg --bnd \
+    -mbench_agg \
+    -sSEED \
+    -fbench_readed -fbench_proged -fbench_erased
 
 # plot results
-./scripts/plotmpl.py \
-    bench_mtree.sh.raw_fixed.csv \
-    bench_mtree.sh.amortized_fixed.csv \
-    -obench_mtree.sh.svg \
-    $([ "${2:-}" == order ] && echo --legend) \
-    -xN \
-    $([ "${2:-}" == order ] && echo -bORDER || echo -DORDER=2) \
-    $([ "${2:-}" == order ] && echo -DMODE=avg || echo -bMODE) \
-    -W1600 -H600 \
-    --ggplot --dark \
+echo "plotting $0.svg"
+./scripts/plotmpl.py "$0.avg.csv" -o"$0.svg" \
+    -W1750 -H750 \
+    --ggplot $([[ "$dark" ]] && echo "--dark") \
+    -xbench_iter \
+    -bORDER \
+    -bBLOCK_SIZE \
+    -bbench_agg \
+    -Dcase=bench_mtree \
+    $([[ "$cmp_bs" ]] \
+        && awk -F, '
+            NR==1 {for (i=1;i<=NF;i++) {if ($i == "BLOCK_SIZE") break}}
+            NR>1 {bs[$i]=1}
+            END {for (k in bs) {print k}}' \
+            "$0.csv" \
+            | sort -n \
+            | awk '{
+                printf("-Lbs\\=%s=2,%s,avg,bench_readed\n", $0, $0);
+                printf("-L==2,%s,avg,bench_proged\n", $0);
+                printf("-L==2,%s,avg,bench_erased\n", $0);
+                printf("-L==2,%s,bnd,bench_readed\n", $0);
+                printf("-L==2,%s,bnd,bench_proged\n", $0);
+                printf("-L==2,%s,bnd,bench_erased\n", $0)}' \
+        || echo '
+            -Linorder=0,4096,avg,bench_readed
+            -L==0,4096,avg,bench_proged
+            -L==0,4096,avg,bench_erased
+            -L==0,4096,bnd,bench_readed
+            -L==0,4096,bnd,bench_proged
+            -L==0,4096,bnd,bench_erased
+            -Lreversed=1,4096,avg,bench_readed
+            -L==1,4096,avg,bench_proged
+            -L==1,4096,avg,bench_erased
+            -L==1,4096,bnd,bench_readed
+            -L==1,4096,bnd,bench_proged
+            -L==1,4096,bnd,bench_erased
+            -Lrandom=2,4096,avg,bench_readed
+            -L==2,4096,avg,bench_proged
+            -L==2,4096,avg,bench_erased
+            -L==2,4096,bnd,bench_readed
+            -L==2,4096,bnd,bench_proged
+            -L==2,4096,bnd,bench_erased') \
     --y2 --yunits=B \
-    --xlabel="count" \
     --title="mtree operations" \
-    --subplot="-Dcase=bench_mtree_lookup -ybench_readed --ylabel=bench_readed --title=mtree_lookup --xticklabels=" \
-        --subplot-below="-Dcase=bench_mtree_lookup -ybench_proged --ylabel=bench_proged -Y0,1 --xticklabels=" \
-        --subplot-below="-Dcase=bench_mtree_lookup -ybench_erased --ylabel=bench_erased -Y0,1 -H0.33" \
-    --subplot-right="-Dcase=bench_mtree_traversal -DVALIDATE=0 -ybench_readed --title='mtree_traversal (amortized)' -W0.5 --xticklabels= \
-        --subplot-below=\"-Dcase=bench_mtree_traversal -DVALIDATE=0 -ybench_proged -Y0,1 --xticklabels=\" \
-        --subplot-below=\"-Dcase=bench_mtree_traversal -DVALIDATE=0 -ybench_erased -Y0,1 -H0.33\"" \
-    --subplot-right="-Dcase=bench_mtree_traversal -DVALIDATE=1 -ybench_readed --title='mtree_traversal (validated,amortized)' -W0.33 --xticklabels= \
-        --subplot-below=\"-Dcase=bench_mtree_traversal -DVALIDATE=1 -ybench_proged -Y0,1 --xticklabels=\" \
-        --subplot-below=\"-Dcase=bench_mtree_traversal -DVALIDATE=1 -ybench_erased -Y0,1 -H0.33\"" \
-    --subplot-right="-Dcase=bench_mtree_commit -DAMORTIZED=0 -ybench_readed --title=mtree_commit -W0.25 --xticklabels= \
-        --subplot-below=\"-Dcase=bench_mtree_commit -DAMORTIZED=0 -ybench_proged --xticklabels=\" \
-        --subplot-below=\"-Dcase=bench_mtree_commit -DAMORTIZED=0 -ybench_erased -H0.33\"" \
-    --subplot-right="-Dcase=bench_mtree_commit -DAMORTIZED=1 -ybench_readed --title='mtree_commit (amortized)' -W0.2 --xticklabels= \
-        --subplot-below=\"-Dcase=bench_mtree_commit -DAMORTIZED=1 -ybench_proged --xticklabels=\" \
-        --subplot-below=\"-Dcase=bench_mtree_commit -DAMORTIZED=1 -ybench_erased -H0.33\"" \
-    "$([ "${2:-}" == order ] \
-        && echo "--colors= \
-            #a1c9f4bf,#a1c9f4bf,#a1c9f4bf, \
-            #ffb482bf,#ffb482bf,#ffb482bf, \
-            #8de5a1bf,#8de5a1bf,#8de5a1bf, " \
-        || echo "--colors= \
-            #a1c9f4bf,#a1c9f4bf,#a1c9f4bf, \
-            #a1c9f43f,#a1c9f43f,#a1c9f43f, ")" \
-    "$([ "${2:-}" == order ] \
-        && echo "--labels= \
-            inorder,,, \
-            reversed,,, \
-            random,,, ")"
+    --subplot=" \
+            -Dbench_meas=commit \
+            -ybench_readed \
+            --ylabel=bench_readed \
+            --title=commit \
+            --xticklabels=" \
+        --subplot-below=" \
+            -Dbench_meas=commit \
+            -ybench_proged \
+            --ylabel=bench_proged
+            -H0.5 " \
+        --subplot-below=" \
+            -Dbench_meas=commit \
+            -ybench_erased \
+            --ylabel=bench_erased \
+            -H0.33" \
+    --subplot-right=" \
+            -Dbench_meas=commit+amor \
+            -ybench_readed \
+            --title='commit (amortized)' \
+            --xticklabels= \
+            -W0.5 \
+        --subplot-below=\" \
+            -Dbench_meas=commit+amor \
+            -ybench_proged \
+            -H0.5 \" \
+        --subplot-below=\" \
+            -Dbench_meas=commit+amor \
+            -ybench_erased \
+            -Y0,1024 \
+            -H0.33\"" \
+    --subplot-right=" \
+            -Dbench_meas=namelookup \
+            -ybench_readed \
+            --title='namelookup' \
+            --xticklabels= \
+            -W0.33 \
+        --subplot-below=\" \
+            -Dbench_meas=namelookup \
+            -ybench_proged \
+            -Y0,1 \
+            -H0.5 \" \
+        --subplot-below=\" \
+            -Dbench_meas=namelookup \
+            -ybench_erased \
+            -Y0,1 \
+            -H0.33\"" \
+    --subplot-right=" \
+            -Dbench_meas=lookup \
+            -ybench_readed \
+            --title='lookup' \
+            --xticklabels= \
+            -W0.25 \
+        --subplot-below=\" \
+            -Dbench_meas=lookup \
+            -ybench_proged \
+            -Y0,1 \
+            -H0.5 \" \
+        --subplot-below=\" \
+            -Dbench_meas=lookup \
+            -ybench_erased \
+            -Y0,1 \
+            -H0.33\"" \
+    --subplot-right=" \
+            -Dbench_meas=traversal+per \
+            -ybench_readed \
+            --title='traversal (per-entry)' \
+            --xticklabels= \
+            -Y0,1024 \
+            -W0.20 \
+        --subplot-below=\" \
+            -Dbench_meas=traversal+per \
+            -ybench_proged \
+            -Y0,1 \
+            -H0.5 \" \
+        --subplot-below=\" \
+            -Dbench_meas=traversal+per \
+            -ybench_erased \
+            -Y0,1 \
+            -H0.33\"" \
+    --subplot-right=" \
+            -Dbench_meas=usage+per \
+            -ybench_readed \
+            --ylabel=bench_usage \
+            --title='usage (per-entry)' \
+            --xticklabels= \
+            -Y0,1024 \
+            -W0.16 \
+        --subplot-below=\" \
+            -Dbench_meas=usage \
+            -ybench_readed \
+            --ylabel=bench_usage \
+            --title='usage (total)' \
+            -H0.665\"" \
+    --legend \
+    --colors=" \
+        #4c72b0bf,#4c72b0bf,#4c72b0bf, \
+        #4c72b03f,#4c72b03f,#4c72b03f, \
+        #dd8452bf,#dd8452bf,#dd8452bf, \
+        #dd84523f,#dd84523f,#dd84523f, \
+        #55a868bf,#55a868bf,#55a868bf, \
+        #55a8683f,#55a8683f,#55a8683f, \
+        #c44e52bf,#c44e52bf,#c44e52bf, \
+        #c44e523f,#c44e523f,#c44e523f, \
+        #8172b3bf,#8172b3bf,#8172b3bf, \
+        #8172b33f,#8172b33f,#8172b33f, \
+        #937860bf,#937860bf,#937860bf, \
+        #9378603f,#9378603f,#9378603f, \
+        #da8bc3bf,#da8bc3bf,#da8bc3bf, \
+        #da8bc33f,#da8bc33f,#da8bc33f, \
+        #8c8c8cbf,#8c8c8cbf,#8c8c8cbf, \
+        #8c8c8c3f,#8c8c8c3f,#8c8c8c3f, \
+        #ccb974bf,#ccb974bf,#ccb974bf, \
+        #ccb9743f,#ccb9743f,#ccb9743f, \
+        #64b5cdbf,#64b5cdbf,#64b5cdbf, \
+        #64b5cd3f,#64b5cd3f,#64b5cd3f"
 
 
 # a simple webpage for easy viewing
-cat << HERE > bench_mtree.sh.html
-    <body style="background-color:#443333;">
-    <img src="bench_mtree.sh.svg">
+echo "generating $0.html"
+cat << HERE > "$0.html"
+    $([[ "$dark" ]] \
+        && echo '<body style="background-color:#443333;">' \
+        || echo '<body style="background-color:#ccbbbb;">')
+    <img src="$(basename $0).svg">
 HERE
+

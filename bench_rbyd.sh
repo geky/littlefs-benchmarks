@@ -6,7 +6,7 @@ set -eu -o pipefail
 samples="${1:-1}"
 shift || true
 
-# allow --github for github formatting
+# allow --dark for dark mode
 # rest gets passed to bench.py
 args+=()
 dark=
@@ -49,7 +49,7 @@ echo "averaging $0.avg.csv"
     -fbench_readed -fbench_proged -fbench_erased
 
 # plot results
-echo "plotting $0.svg"
+echo "plotting $0.attr.svg"
 ./scripts/plotmpl.py "$0.avg.csv" -o"$0.attr.svg" \
     -W1750 -H500 \
     --ggplot $([[ "$dark" ]] && echo "--dark") \
@@ -135,7 +135,7 @@ echo "plotting $0.svg"
         #55a868bf,#55a868bf, \
         #55a8683f,#55a8683f"
 
-echo "plotting $0.svg"
+echo "plotting $0.id.svg"
 ./scripts/plotmpl.py "$0.avg.csv" -o"$0.id.svg" \
     -W1750 -H500 \
     --ggplot $([[ "$dark" ]] && echo "--dark") \
