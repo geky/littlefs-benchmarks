@@ -8,7 +8,6 @@ defines.ORDER = [0, 1, 2]
 defines.N = 1024
 defines.STEP = 1
 defines.SEED = 42
-in = 'lfs.c'
 code = '''
     lfs_t lfs;
     lfsr_format(&lfs, CFG) => 0;
@@ -67,7 +66,7 @@ code = '''
             lfs_soff_t count = lfsr_fs_size(&lfs);
             assert(count >= 0);
             BENCH_RESULT("usage", i, STEP,
-                (uintmax_t)count * CFG->block_size);
+                (uintmax_t)count * (uintmax_t)CFG->block_size);
         }
     }
 
