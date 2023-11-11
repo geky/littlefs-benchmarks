@@ -110,7 +110,8 @@ echo "plotting $0$cmp.svg"
         --subplot-below=" \
             -Dbench_meas=commit \
             -ybench_proged \
-            --ylabel=bench_proged
+            --ylabel=bench_proged \
+            --xticklabels= \
             -H0.5 " \
         --subplot-below=" \
             -Dbench_meas=commit \
@@ -126,6 +127,7 @@ echo "plotting $0$cmp.svg"
         --subplot-below=\" \
             -Dbench_meas=commit+amor \
             -ybench_proged \
+            --xticklabels= \
             -H0.5 \" \
         --subplot-below=\" \
             -Dbench_meas=commit+amor \
@@ -140,6 +142,7 @@ echo "plotting $0$cmp.svg"
         --subplot-below=\" \
             -Dbench_meas=lookup \
             -ybench_proged \
+            --xticklabels= \
             -Y0,1 \
             -H0.5 \" \
         --subplot-below=\" \
@@ -237,7 +240,8 @@ echo "plotting $0$cmp.named.svg"
         --subplot-below=" \
             -Dbench_meas=commit \
             -ybench_proged \
-            --ylabel=bench_proged
+            --ylabel=bench_proged \
+            --xticklabels= \
             -H0.5 " \
         --subplot-below=" \
             -Dbench_meas=commit \
@@ -253,6 +257,7 @@ echo "plotting $0$cmp.named.svg"
         --subplot-below=\" \
             -Dbench_meas=commit+amor \
             -ybench_proged \
+            --xticklabels= \
             -H0.5 \" \
         --subplot-below=\" \
             -Dbench_meas=commit+amor \
@@ -267,6 +272,7 @@ echo "plotting $0$cmp.named.svg"
         --subplot-below=\" \
             -Dbench_meas=namelookup \
             -ybench_proged \
+            --xticklabels= \
             -Y0,1 \
             -H0.5 \" \
         --subplot-below=\" \
@@ -283,6 +289,7 @@ echo "plotting $0$cmp.named.svg"
         --subplot-below=\" \
             -Dbench_meas=lookup \
             -ybench_proged \
+            --xticklabels= \
             -Y0,1 \
             -H0.5 \" \
         --subplot-below=\" \

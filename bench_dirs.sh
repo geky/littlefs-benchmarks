@@ -110,7 +110,8 @@ echo "plotting $0$cmp.svg"
         --subplot-below=" \
             -Dbench_meas=mkdir \
             -ybench_proged \
-            --ylabel=bench_proged
+            --ylabel=bench_proged \
+            --xticklabels= \
             -H0.5 " \
         --subplot-below=" \
             -Dbench_meas=mkdir \
@@ -126,6 +127,7 @@ echo "plotting $0$cmp.svg"
         --subplot-below=\" \
             -Dbench_meas=mkdir+amor \
             -ybench_proged \
+            --xticklabels= \
             -H0.5 \" \
         --subplot-below=\" \
             -Dbench_meas=mkdir+amor \
@@ -141,6 +143,7 @@ echo "plotting $0$cmp.svg"
         --subplot-below=\" \
             -Dbench_meas=stat \
             -ybench_proged \
+            --xticklabels= \
             -Y0,1 \
             -H0.5 \" \
         --subplot-below=\" \
@@ -157,6 +160,7 @@ echo "plotting $0$cmp.svg"
         --subplot-below=\" \
             -Dbench_meas=read+per \
             -ybench_proged \
+            --xticklabels= \
             -Y0,1 \
             -H0.5 \" \
         --subplot-below=\" \

@@ -107,7 +107,8 @@ then
             --subplot-below=" \
                 -Dbench_meas=write \
                 -ybench_proged \
-                --ylabel=bench_proged
+                --ylabel=bench_proged \
+                --xticklabels= \
                 -H0.5 " \
             --subplot-below=" \
                 -Dbench_meas=write \
@@ -123,6 +124,7 @@ then
             --subplot-below=\" \
                 -Dbench_meas=write+amor \
                 -ybench_proged \
+                --xticklabels= \
                 -H0.5 \" \
             --subplot-below=\" \
                 -Dbench_meas=write+amor \
@@ -137,6 +139,7 @@ then
             --subplot-below=\" \
                 -Dbench_meas=read \
                 -ybench_proged \
+                --xticklabels= \
                 -Y0,1 \
                 -H0.5 \" \
             --subplot-below=\" \
@@ -220,7 +223,8 @@ then
             --subplot-below=" \
                 -Dbench_meas=write \
                 -ybench_proged \
-                --ylabel=bench_proged
+                --ylabel=bench_proged \
+                --xticklabels= \
                 -H0.5 " \
             --subplot-below=" \
                 -Dbench_meas=write \
@@ -236,6 +240,7 @@ then
             --subplot-below=\" \
                 -Dbench_meas=write+amor \
                 -ybench_proged \
+                --xticklabels= \
                 -H0.5 \" \
             --subplot-below=\" \
                 -Dbench_meas=write+amor \
@@ -250,6 +255,7 @@ then
             --subplot-below=\" \
                 -Dbench_meas=read \
                 -ybench_proged \
+                --xticklabels= \
                 -Y0,1 \
                 -H0.5 \" \
             --subplot-below=\" \
@@ -363,7 +369,8 @@ echo "plotting $0$cmp.linear.svg"
         --subplot-below=" \
             -Dbench_meas=write \
             -ybench_proged \
-            --ylabel=bench_proged
+            --ylabel=bench_proged \
+            --xticklabels= \
             -H0.5 " \
         --subplot-below=" \
             -Dbench_meas=write \
@@ -379,6 +386,7 @@ echo "plotting $0$cmp.linear.svg"
         --subplot-below=\" \
             -Dbench_meas=write+amor \
             -ybench_proged \
+            --xticklabels= \
             -H0.5 \" \
         --subplot-below=\" \
             -Dbench_meas=write+amor \
@@ -393,6 +401,7 @@ echo "plotting $0$cmp.linear.svg"
         --subplot-below=\" \
             -Dbench_meas=read \
             -ybench_proged \
+            --xticklabels= \
             -Y0,1 \
             -H0.5 \" \
         --subplot-below=\" \
@@ -506,7 +515,8 @@ echo "plotting $0$cmp.random.svg"
         --subplot-below=" \
             -Dbench_meas=write \
             -ybench_proged \
-            --ylabel=bench_proged
+            --ylabel=bench_proged \
+            --xticklabels= \
             -H0.5 " \
         --subplot-below=" \
             -Dbench_meas=write \
@@ -522,6 +532,7 @@ echo "plotting $0$cmp.random.svg"
         --subplot-below=\" \
             -Dbench_meas=write+amor \
             -ybench_proged \
+            --xticklabels= \
             -H0.5 \" \
         --subplot-below=\" \
             -Dbench_meas=write+amor \
@@ -536,6 +547,7 @@ echo "plotting $0$cmp.random.svg"
         --subplot-below=\" \
             -Dbench_meas=read \
             -ybench_proged \
+            --xticklabels= \
             -Y0,1 \
             -H0.5 \" \
         --subplot-below=\" \
@@ -648,7 +660,8 @@ echo "plotting $0$cmp.sparse.svg"
         --subplot-below=" \
             -Dbench_meas=write \
             -ybench_proged \
-            --ylabel=bench_proged
+            --ylabel=bench_proged \
+            --xticklabels= \
             -H0.5 " \
         --subplot-below=" \
             -Dbench_meas=write \
@@ -664,6 +677,7 @@ echo "plotting $0$cmp.sparse.svg"
         --subplot-below=\" \
             -Dbench_meas=write+amor \
             -ybench_proged \
+            --xticklabels= \
             -H0.5 \" \
         --subplot-below=\" \
             -Dbench_meas=write+amor \
@@ -678,6 +692,7 @@ echo "plotting $0$cmp.sparse.svg"
         --subplot-below=\" \
             -Dbench_meas=read \
             -ybench_proged \
+            --xticklabels= \
             -Y0,1 \
             -H0.5 \" \
         --subplot-below=\" \
