@@ -8,7 +8,7 @@
 ![btree_operations](bench_btree.sh.svg)
 ![btree_operations_named](bench_btree.sh.named.svg)
 ![btree_operations_cmp_bs](bench_btree.sh.bs.svg)
-![btree_operations_named_cmp_bs](bench_btree.sh.named.bs.svg)
+![btree_operations_named_cmp_bs](bench_btree.sh.bs.named.svg)
 
 ### Mtree
 

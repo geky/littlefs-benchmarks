@@ -16,13 +16,13 @@ while [[ "$#" -gt 0 ]]
 do
     case "$1" in 
         --cmp-bs)
-            cmp=bs
+            cmp=.bs
         ;;
         --cmp-frs)
-            cmp=frs
+            cmp=.frs
         ;;
         --cmp-crs)
-            cmp=crs
+            cmp=.crs
         ;;
         --dark)
             dark=1
@@ -35,31 +35,31 @@ do
 done
 
 # run benchmarks
-echo "benching $samples samples $0.csv"
+echo "benching $samples samples $0$cmp.csv"
 if [[ "$samples" -gt 0 ]]
 then
-    ./scripts/bench.py -j -Gnor -o"$0.csv" \
+    ./scripts/bench.py -j -Gnor -o"$0$cmp.csv" \
         -B bench_files \
         -DSEED="range($samples)" \
-        $([[ "$cmp" == "bs" ]] && echo "\
+        $([[ "$cmp" == ".bs" ]] && echo "\
             -DBLOCK_SIZE=2048,4096,8192,16384") \
-        $([[ "$cmp" == "frs" ]] && echo "\
+        $([[ "$cmp" == ".frs" ]] && echo "\
             -DFRAGMENT_SIZE=8,16,32,64,128") \
-        $([[ "$cmp" == "crs" ]] && echo "\
+        $([[ "$cmp" == ".crs" ]] && echo "\
             -DCRYSTAL_SIZE=128,256,512,1024,2048") \
         ${args[@]}
 fi
 
 # compute amors/avgs
 echo "amortizing $0.amor.csv"
-./scripts/amor.py "$0.csv" -o "$0.amor.csv" \
+./scripts/amor.py "$0$cmp.csv" -o "$0.amor.csv" \
     --amor --per \
     -mbench_meas \
     -ibench_iter \
     -nbench_size \
     -fbench_readed -fbench_proged -fbench_erased
 echo "averaging $0.avg.csv"
-./scripts/avg.py "$0.csv" "$0.amor.csv" -o "$0.avg.csv" \
+./scripts/avg.py "$0$cmp.csv" "$0.amor.csv" -o "$0.avg.csv" \
     --avg --bnd \
     -mbench_agg \
     -sSEED \
@@ -294,14 +294,14 @@ then
             #64b5cd3f,#64b5cd3f,#64b5cd3f"
 fi
 
-echo "plotting $0.linear.svg"
-./scripts/plotmpl.py "$0.avg.csv" -o"$0.linear.svg" \
+echo "plotting $0$cmp.linear.svg"
+./scripts/plotmpl.py "$0.avg.csv" -o"$0$cmp.linear.svg" \
     -W1750 -H750 \
     --ggplot $([[ "$dark" ]] && echo "--dark") \
     -xbench_iter \
-    $([[ "$cmp" == "bs" ]] && echo "-bBLOCK_SIZE") \
-    $([[ "$cmp" == "frs" ]] && echo "-bFRAGMENT_SIZE") \
-    $([[ "$cmp" == "crs" ]] && echo "-bCRYSTAL_SIZE") \
+    $([[ "$cmp" == ".bs" ]] && echo "-bBLOCK_SIZE") \
+    $([[ "$cmp" == ".frs" ]] && echo "-bFRAGMENT_SIZE") \
+    $([[ "$cmp" == ".crs" ]] && echo "-bCRYSTAL_SIZE") \
     -bbench_agg \
     -Dcase=bench_files \
     -DORDER=0 \
@@ -313,11 +313,11 @@ echo "plotting $0.linear.svg"
         -L==bnd,bench_readed
         -L==bnd,bench_proged
         -L==bnd,bench_erased') \
-    $([[ "$cmp" == "bs" ]] && awk -F, '
+    $([[ "$cmp" == ".bs" ]] && awk -F, '
         NR==1 {for (i=1;i<=NF;i++) {if ($i == "BLOCK_SIZE") break}}
         NR>1 {bs[$i]=1}
         END {for (k in bs) {print k}}' \
-        "$0.csv" \
+        "$0$cmp.csv" \
         | sort -n \
         | awk '{
             printf("-Lbs\\=%s=%s,avg,bench_readed\n", $0, $0);
@@ -326,11 +326,11 @@ echo "plotting $0.linear.svg"
             printf("-L==%s,bnd,bench_readed\n", $0);
             printf("-L==%s,bnd,bench_proged\n", $0);
             printf("-L==%s,bnd,bench_erased\n", $0)}') \
-    $([[ "$cmp" == "frs" ]] && awk -F, '
+    $([[ "$cmp" == ".frs" ]] && awk -F, '
         NR==1 {for (i=1;i<=NF;i++) {if ($i == "FRAGMENT_SIZE") break}}
         NR>1 {frs[$i]=1}
         END {for (k in frs) {print k}}' \
-        "$0.csv" \
+        "$0$cmp.csv" \
         | sort -n \
         | awk '{
             printf("-Lfrs\\=%s=%s,avg,bench_readed\n", $0, $0);
@@ -339,11 +339,11 @@ echo "plotting $0.linear.svg"
             printf("-L==%s,bnd,bench_readed\n", $0);
             printf("-L==%s,bnd,bench_proged\n", $0);
             printf("-L==%s,bnd,bench_erased\n", $0)}') \
-    $([[ "$cmp" == "crs" ]] && awk -F, '
+    $([[ "$cmp" == ".crs" ]] && awk -F, '
         NR==1 {for (i=1;i<=NF;i++) {if ($i == "CRYSTAL_SIZE") break}}
         NR>1 {crs[$i]=1}
         END {for (k in crs) {print k}}' \
-        "$0.csv" \
+        "$0$cmp.csv" \
         | sort -n \
         | awk '{
             printf("-Lcrs\\=%s=%s,avg,bench_readed\n", $0, $0);
@@ -437,14 +437,14 @@ echo "plotting $0.linear.svg"
         #64b5cdbf,#64b5cdbf,#64b5cdbf, \
         #64b5cd3f,#64b5cd3f,#64b5cd3f"
 
-echo "plotting $0.random.svg"
-./scripts/plotmpl.py "$0.avg.csv" -o"$0.random.svg" \
+echo "plotting $0$cmp.random.svg"
+./scripts/plotmpl.py "$0.avg.csv" -o"$0$cmp.random.svg" \
     -W1750 -H750 \
     --ggplot $([[ "$dark" ]] && echo "--dark") \
     -xbench_iter \
-    $([[ "$cmp" == "bs" ]] && echo "-bBLOCK_SIZE") \
-    $([[ "$cmp" == "frs" ]] && echo "-bFRAGMENT_SIZE") \
-    $([[ "$cmp" == "crs" ]] && echo "-bCRYSTAL_SIZE") \
+    $([[ "$cmp" == ".bs" ]] && echo "-bBLOCK_SIZE") \
+    $([[ "$cmp" == ".frs" ]] && echo "-bFRAGMENT_SIZE") \
+    $([[ "$cmp" == ".crs" ]] && echo "-bCRYSTAL_SIZE") \
     -bbench_agg \
     -Dcase=bench_files \
     -DORDER=2 \
@@ -456,11 +456,11 @@ echo "plotting $0.random.svg"
         -L==bnd,bench_readed
         -L==bnd,bench_proged
         -L==bnd,bench_erased') \
-    $([[ "$cmp" == "bs" ]] && awk -F, '
+    $([[ "$cmp" == ".bs" ]] && awk -F, '
         NR==1 {for (i=1;i<=NF;i++) {if ($i == "BLOCK_SIZE") break}}
         NR>1 {bs[$i]=1}
         END {for (k in bs) {print k}}' \
-        "$0.csv" \
+        "$0$cmp.csv" \
         | sort -n \
         | awk '{
             printf("-Lbs\\=%s=%s,avg,bench_readed\n", $0, $0);
@@ -469,11 +469,11 @@ echo "plotting $0.random.svg"
             printf("-L==%s,bnd,bench_readed\n", $0);
             printf("-L==%s,bnd,bench_proged\n", $0);
             printf("-L==%s,bnd,bench_erased\n", $0)}') \
-    $([[ "$cmp" == "frs" ]] && awk -F, '
+    $([[ "$cmp" == ".frs" ]] && awk -F, '
         NR==1 {for (i=1;i<=NF;i++) {if ($i == "FRAGMENT_SIZE") break}}
         NR>1 {frs[$i]=1}
         END {for (k in frs) {print k}}' \
-        "$0.csv" \
+        "$0$cmp.csv" \
         | sort -n \
         | awk '{
             printf("-Lfrs\\=%s=%s,avg,bench_readed\n", $0, $0);
@@ -482,11 +482,11 @@ echo "plotting $0.random.svg"
             printf("-L==%s,bnd,bench_readed\n", $0);
             printf("-L==%s,bnd,bench_proged\n", $0);
             printf("-L==%s,bnd,bench_erased\n", $0)}') \
-    $([[ "$cmp" == "crs" ]] && awk -F, '
+    $([[ "$cmp" == ".crs" ]] && awk -F, '
         NR==1 {for (i=1;i<=NF;i++) {if ($i == "CRYSTAL_SIZE") break}}
         NR>1 {crs[$i]=1}
         END {for (k in crs) {print k}}' \
-        "$0.csv" \
+        "$0$cmp.csv" \
         | sort -n \
         | awk '{
             printf("-Lcrs\\=%s=%s,avg,bench_readed\n", $0, $0);
@@ -579,14 +579,14 @@ echo "plotting $0.random.svg"
         #64b5cdbf,#64b5cdbf,#64b5cdbf, \
         #64b5cd3f,#64b5cd3f,#64b5cd3f"
 
-echo "plotting $0.sparse.svg"
-./scripts/plotmpl.py "$0.avg.csv" -o"$0.sparse.svg" \
+echo "plotting $0$cmp.sparse.svg"
+./scripts/plotmpl.py "$0.avg.csv" -o"$0$cmp.sparse.svg" \
     -W1750 -H750 \
     --ggplot $([[ "$dark" ]] && echo "--dark") \
     -xbench_iter \
-    $([[ "$cmp" == "bs" ]] && echo "-bBLOCK_SIZE") \
-    $([[ "$cmp" == "frs" ]] && echo "-bFRAGMENT_SIZE") \
-    $([[ "$cmp" == "crs" ]] && echo "-bCRYSTAL_SIZE") \
+    $([[ "$cmp" == ".bs" ]] && echo "-bBLOCK_SIZE") \
+    $([[ "$cmp" == ".frs" ]] && echo "-bFRAGMENT_SIZE") \
+    $([[ "$cmp" == ".crs" ]] && echo "-bCRYSTAL_SIZE") \
     -bbench_agg \
     -Dcase=bench_files \
     -DORDER=2 \
@@ -598,11 +598,11 @@ echo "plotting $0.sparse.svg"
         -L==bnd,bench_readed
         -L==bnd,bench_proged
         -L==bnd,bench_erased') \
-    $([[ "$cmp" == "bs" ]] && awk -F, '
+    $([[ "$cmp" == ".bs" ]] && awk -F, '
         NR==1 {for (i=1;i<=NF;i++) {if ($i == "BLOCK_SIZE") break}}
         NR>1 {bs[$i]=1}
         END {for (k in bs) {print k}}' \
-        "$0.csv" \
+        "$0$cmp.csv" \
         | sort -n \
         | awk '{
             printf("-Lbs\\=%s=%s,avg,bench_readed\n", $0, $0);
@@ -611,11 +611,11 @@ echo "plotting $0.sparse.svg"
             printf("-L==%s,bnd,bench_readed\n", $0);
             printf("-L==%s,bnd,bench_proged\n", $0);
             printf("-L==%s,bnd,bench_erased\n", $0)}') \
-    $([[ "$cmp" == "frs" ]] && awk -F, '
+    $([[ "$cmp" == ".frs" ]] && awk -F, '
         NR==1 {for (i=1;i<=NF;i++) {if ($i == "FRAGMENT_SIZE") break}}
         NR>1 {frs[$i]=1}
         END {for (k in frs) {print k}}' \
-        "$0.csv" \
+        "$0$cmp.csv" \
         | sort -n \
         | awk '{
             printf("-Lfrs\\=%s=%s,avg,bench_readed\n", $0, $0);
@@ -624,11 +624,11 @@ echo "plotting $0.sparse.svg"
             printf("-L==%s,bnd,bench_readed\n", $0);
             printf("-L==%s,bnd,bench_proged\n", $0);
             printf("-L==%s,bnd,bench_erased\n", $0)}') \
-    $([[ "$cmp" == "crs" ]] && awk -F, '
+    $([[ "$cmp" == ".crs" ]] && awk -F, '
         NR==1 {for (i=1;i<=NF;i++) {if ($i == "CRYSTAL_SIZE") break}}
         NR>1 {crs[$i]=1}
         END {for (k in crs) {print k}}' \
-        "$0.csv" \
+        "$0$cmp.csv" \
         | sort -n \
         | awk '{
             printf("-Lcrs\\=%s=%s,avg,bench_readed\n", $0, $0);
@@ -734,10 +734,10 @@ cat << HERE > "$0.html"
             <p></p>
             <img src=\"$(basename $0).rewriting.svg\">
             <p></p>")
-    <img src="$(basename $0).linear.svg">
+    <img src="$(basename $0)$cmp.linear.svg">
     <p></p>
-    <img src="$(basename $0).random.svg">
+    <img src="$(basename $0)$cmp.random.svg">
     <p></p>
-    <img src="$(basename $0).sparse.svg">
+    <img src="$(basename $0)$cmp.sparse.svg">
 HERE
 

@@ -10,13 +10,13 @@ shift || true
 # allow --dark for dark mode
 # rest gets passed to bench.py
 args+=()
-cmp_bs=
+cmp=
 dark=
 while [[ "$#" -gt 0 ]]
 do
     case "$1" in 
         --cmp-bs)
-            cmp_bs=1
+            cmp=.bs
         ;;
         --dark)
             dark=1
@@ -29,13 +29,13 @@ do
 done
 
 # run benchmarks
-echo "benching $samples samples $0.csv"
+echo "benching $samples samples $0$cmp.csv"
 if [[ "$samples" -gt 0 ]]
 then
-    ./scripts/bench.py -j -Gnor -o"$0.csv" \
+    ./scripts/bench.py -j -Gnor -o"$0$cmp.csv" \
         -B bench_btree \
         -DSEED="range($samples)" \
-        $([[ "$cmp_bs" ]] && echo "\
+        $([[ "$cmp" == ".bs" ]] && echo "\
             -DORDER=2 \
             -DBLOCK_SIZE=1024,2048,4096,8192,16384") \
         ${args[@]}
@@ -43,22 +43,22 @@ fi
 
 # compute amors/avgs
 echo "amortizing $0.amor.csv"
-./scripts/amor.py "$0.csv" -o "$0.amor.csv" \
+./scripts/amor.py "$0$cmp.csv" -o "$0.amor.csv" \
     --amor --per \
     -mbench_meas \
     -ibench_iter \
     -nbench_size \
     -fbench_readed -fbench_proged -fbench_erased
 echo "averaging $0.avg.csv"
-./scripts/avg.py "$0.csv" "$0.amor.csv" -o "$0.avg.csv" \
+./scripts/avg.py "$0$cmp.csv" "$0.amor.csv" -o "$0.avg.csv" \
     --avg --bnd \
     -mbench_agg \
     -sSEED \
     -fbench_readed -fbench_proged -fbench_erased
 
 # plot results
-echo "plotting $0.svg"
-./scripts/plotmpl.py "$0.avg.csv" -o"$0.svg" \
+echo "plotting $0$cmp.svg"
+./scripts/plotmpl.py "$0.avg.csv" -o"$0$cmp.svg" \
     -W1750 -H750 \
     --ggplot $([[ "$dark" ]] && echo "--dark") \
     -xbench_iter \
@@ -66,12 +66,12 @@ echo "plotting $0.svg"
     -bBLOCK_SIZE \
     -bbench_agg \
     -Dcase=bench_btree_btree \
-    $([[ "$cmp_bs" ]] \
+    $([[ "$cmp" == ".bs" ]] \
         && awk -F, '
             NR==1 {for (i=1;i<=NF;i++) {if ($i == "BLOCK_SIZE") break}}
             NR>1 {bs[$i]=1}
             END {for (k in bs) {print k}}' \
-            "$0.csv" \
+            "$0$cmp.csv" \
             | sort -n \
             | awk '{
                 printf("-Lbs\\=%s=2,%s,avg,bench_readed\n", $0, $0);
@@ -184,8 +184,8 @@ echo "plotting $0.svg"
         #64b5cdbf,#64b5cdbf,#64b5cdbf, \
         #64b5cd3f,#64b5cd3f,#64b5cd3f"
 
-echo "plotting $0.named.svg"
-./scripts/plotmpl.py "$0.avg.csv" -o"$0.named.svg" \
+echo "plotting $0$cmp.named.svg"
+./scripts/plotmpl.py "$0.avg.csv" -o"$0$cmp.named.svg" \
     -W1750 -H750 \
     --ggplot $([[ "$dark" ]] && echo "--dark") \
     -xbench_iter \
@@ -193,12 +193,12 @@ echo "plotting $0.named.svg"
     -bBLOCK_SIZE \
     -bbench_agg \
     -Dcase=bench_btree_namedbtree \
-    $([[ "$cmp_bs" ]] \
+    $([[ "$cmp" == ".bs" ]] \
         && awk -F, '
             NR==1 {for (i=1;i<=NF;i++) {if ($i == "BLOCK_SIZE") break}}
             NR>1 {bs[$i]=1}
             END {for (k in bs) {print k}}' \
-            "$0.csv" \
+            "$0$cmp.csv" \
             | sort -n \
             | awk '{
                 printf("-Lbs\\=%s=2,%s,avg,bench_readed\n", $0, $0);
@@ -333,8 +333,8 @@ cat << HERE > "$0.html"
     $([[ "$dark" ]] \
         && echo '<body style="background-color:#443333;">' \
         || echo '<body style="background-color:#ccbbbb;">')
-    <img src="$(basename $0).svg">
+    <img src="$(basename $0)$cmp.svg">
     <p></p>
-    <img src="$(basename $0).named.svg">
+    <img src="$(basename $0)$cmp.named.svg">
 HERE
 
