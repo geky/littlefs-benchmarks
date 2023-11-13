@@ -7,7 +7,8 @@ defines.CRYSTAL_SIZE = 512
 # 0 = in-order
 # 1 = reversed-order
 # 2 = random-order
-defines.ORDER = [0, 1, 2]
+# 3 = random-unaligned-order
+defines.ORDER = [0, 1, 2, 3]
 defines.SIZE = 16384
 defines.CHUNK = 64
 defines.SEED = 42
@@ -73,13 +74,16 @@ code = '''
             LFS_O_RDWR | LFS_O_CREAT) => 0;
     for (lfs_size_t i = 0; i < (SIZE+(CHUNK-1))/CHUNK; i++) {
         lfs_off_t i_
-                = (ORDER == 0) ? i
-                : (ORDER == 1) ? ((SIZE+(CHUNK-1))/CHUNK)-1-i
-                : BENCH_PRNG(&prng) % ((SIZE+(CHUNK-1))/CHUNK);
+                = (ORDER == 0) ? i*CHUNK
+                : (ORDER == 1) ? (((SIZE+(CHUNK-1))/CHUNK)-1-i)*CHUNK
+                : (ORDER == 2) ? (BENCH_PRNG(&prng) % (
+                        (SIZE+(CHUNK-1))/CHUNK)) * CHUNK
+                : BENCH_PRNG(&prng) % (
+                        lfs_max32(SIZE, CHUNK)-(CHUNK-1));
 
         BENCH_START("write", i*CHUNK, CHUNK);
         // seek to where we want to write
-        lfsr_file_seek(&lfs, &file, i_*CHUNK, LFS_SEEK_SET) => i_*CHUNK;
+        lfsr_file_seek(&lfs, &file, i_, LFS_SEEK_SET) => i_;
 
         // actually write
         uint8_t wbuf[CHUNK];
@@ -96,8 +100,9 @@ code = '''
 
         // measure a random chunk-sized read
         BENCH_START("read", i*CHUNK, CHUNK);
-        i_ = BENCH_PRNG(&prng) % (lfsr_file_size(&lfs, &file) / CHUNK);
-        lfsr_file_seek(&lfs, &file, i_*CHUNK, LFS_SEEK_SET) => i_*CHUNK;
+        i_ = BENCH_PRNG(&prng) % (
+                lfs_max32(lfsr_file_size(&lfs, &file), CHUNK) - (CHUNK-1));
+        lfsr_file_seek(&lfs, &file, i_, LFS_SEEK_SET) => i_;
 
         uint8_t rbuf[CHUNK];
         lfsr_file_read(&lfs, &file, rbuf, CHUNK) => CHUNK;

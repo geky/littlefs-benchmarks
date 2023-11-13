@@ -26,19 +26,15 @@
 ![files_rewriting](bench_files.sh.rewriting.svg)
 ![files_linear](bench_files.sh.linear.svg)
 ![files_random](bench_files.sh.random.svg)
-![files_sparse](bench_files.sh.sparse.svg)
 
 ![files_linear_cmp_bs](bench_files.sh.bs.linear.svg)
 ![files_random_cmp_bs](bench_files.sh.bs.random.svg)
-![files_sparse_cmp_bs](bench_files.sh.bs.sparse.svg)
 
 ![files_linear_cmp_frs](bench_files.sh.frs.linear.svg)
 ![files_random_cmp_frs](bench_files.sh.frs.random.svg)
-![files_sparse_cmp_frs](bench_files.sh.frs.sparse.svg)
 
 ![files_linear_cmp_crs](bench_files.sh.crs.linear.svg)
 ![files_random_cmp_crs](bench_files.sh.crs.random.svg)
-![files_sparse_cmp_crs](bench_files.sh.crs.sparse.svg)
 
 # Outdated
 
