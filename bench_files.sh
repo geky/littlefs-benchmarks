@@ -46,7 +46,7 @@ then
         $([[ "$cmp" == ".frs" ]] && echo "\
             -DFRAGMENT_SIZE=8,16,32,64,128") \
         $([[ "$cmp" == ".crs" ]] && echo "\
-            -DCRYSTAL_SIZE=128,256,512,1024,2048") \
+            -DCRYSTAL_SIZE=0,8,64,512,4096") \
         ${args[@]}
 fi
 
