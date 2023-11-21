@@ -18,6 +18,9 @@ do
         --cmp-bs)
             cmp=.bs
         ;;
+        --cmp-ins)
+            cmp=.ins
+        ;;
         --cmp-frs)
             cmp=.frs
         ;;
@@ -43,6 +46,8 @@ then
         -DSEED="range($samples)" \
         $([[ "$cmp" == ".bs" ]] && echo "\
             -DBLOCK_SIZE=2048,4096,8192,16384") \
+        $([[ "$cmp" == ".ins" ]] && echo "\
+            -DINLINE_SIZE=0,8,64,512") \
         $([[ "$cmp" == ".frs" ]] && echo "\
             -DFRAGMENT_SIZE=8,16,32,64,128") \
         $([[ "$cmp" == ".crs" ]] && echo "\
@@ -318,6 +323,7 @@ echo "plotting $0$cmp.linear.svg"
     --ggplot $([[ "$dark" ]] && echo "--dark") \
     -xbench_iter \
     $([[ "$cmp" == ".bs" ]] && echo "-bBLOCK_SIZE") \
+    $([[ "$cmp" == ".ins" ]] && echo "-bINLINE_SIZE") \
     $([[ "$cmp" == ".frs" ]] && echo "-bFRAGMENT_SIZE") \
     $([[ "$cmp" == ".crs" ]] && echo "-bCRYSTAL_SIZE") \
     -bbench_agg \
@@ -339,6 +345,19 @@ echo "plotting $0$cmp.linear.svg"
         | sort -n \
         | awk '{
             printf("-Lbs\\=%s=%s,avg,bench_readed\n", $0, $0);
+            printf("-L==%s,avg,bench_proged\n", $0);
+            printf("-L==%s,avg,bench_erased\n", $0);
+            printf("-L==%s,bnd,bench_readed\n", $0);
+            printf("-L==%s,bnd,bench_proged\n", $0);
+            printf("-L==%s,bnd,bench_erased\n", $0)}') \
+    $([[ "$cmp" == ".ins" ]] && awk -F, '
+        NR==1 {for (i=1;i<=NF;i++) {if ($i == "INLINE_SIZE") break}}
+        NR>1 {ins[$i]=1}
+        END {for (k in ins) {print k}}' \
+        "$0$cmp.csv" \
+        | sort -n \
+        | awk '{
+            printf("-Lins\\=%s=%s,avg,bench_readed\n", $0, $0);
             printf("-L==%s,avg,bench_proged\n", $0);
             printf("-L==%s,avg,bench_erased\n", $0);
             printf("-L==%s,bnd,bench_readed\n", $0);
@@ -464,6 +483,7 @@ echo "plotting $0$cmp.random.svg"
     --ggplot $([[ "$dark" ]] && echo "--dark") \
     -xbench_iter \
     $([[ "$cmp" == ".bs" ]] && echo "-bBLOCK_SIZE") \
+    $([[ "$cmp" == ".ins" ]] && echo "-bINLINE_SIZE") \
     $([[ "$cmp" == ".frs" ]] && echo "-bFRAGMENT_SIZE") \
     $([[ "$cmp" == ".crs" ]] && echo "-bCRYSTAL_SIZE") \
     -bbench_agg \
@@ -485,6 +505,19 @@ echo "plotting $0$cmp.random.svg"
         | sort -n \
         | awk '{
             printf("-Lbs\\=%s=%s,avg,bench_readed\n", $0, $0);
+            printf("-L==%s,avg,bench_proged\n", $0);
+            printf("-L==%s,avg,bench_erased\n", $0);
+            printf("-L==%s,bnd,bench_readed\n", $0);
+            printf("-L==%s,bnd,bench_proged\n", $0);
+            printf("-L==%s,bnd,bench_erased\n", $0)}') \
+    $([[ "$cmp" == ".ins" ]] && awk -F, '
+        NR==1 {for (i=1;i<=NF;i++) {if ($i == "INLINE_SIZE") break}}
+        NR>1 {ins[$i]=1}
+        END {for (k in ins) {print k}}' \
+        "$0$cmp.csv" \
+        | sort -n \
+        | awk '{
+            printf("-Lins\\=%s=%s,avg,bench_readed\n", $0, $0);
             printf("-L==%s,avg,bench_proged\n", $0);
             printf("-L==%s,avg,bench_erased\n", $0);
             printf("-L==%s,bnd,bench_readed\n", $0);

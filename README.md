@@ -30,6 +30,9 @@
 ![files_linear_cmp_bs](bench_files.sh.bs.linear.svg)
 ![files_random_cmp_bs](bench_files.sh.bs.random.svg)
 
+![files_linear_cmp_ins](bench_files.sh.ins.linear.svg)
+![files_random_cmp_ins](bench_files.sh.ins.random.svg)
+
 ![files_linear_cmp_frs](bench_files.sh.frs.linear.svg)
 ![files_random_cmp_frs](bench_files.sh.frs.random.svg)
 
