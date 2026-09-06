@@ -258,9 +258,6 @@ code = '''
 # 2. sync called on every write
 [cases.bench_mount_logging]
 defines.FRUNCATE = false
-# divide by ~1/2, but rotate twice (total ~3/2), so we can fit in more
-# interesting disk sizes
-defines.LOG_SIZE = '(SIZE+2-1) / 2'
 code = '''
     #if defined(LFS3)
     lfs3_t lfs3;
@@ -357,7 +354,7 @@ code = '''
     lfs3_file_t file;
     lfs3_file_open(&lfs3, &file, "bench_log",
             LFS3_O_WRONLY | LFS3_O_CREAT | LFS3_O_EXCL | LFS3_O_APPEND) => 0;
-    for (lfs3_size_t i = 0; i < LOG_SIZE; i += CHUNK) {
+    for (lfs3_size_t i = 0; i < SIZE; i += CHUNK) {
         for (lfs3_size_t j = 0; j < CHUNK; j++) {
             wbuf[j] = 'a' + (BENCH_PRNG(&prng) % 26);
         }
@@ -368,7 +365,7 @@ code = '''
     lfs2_file_t file;
     lfs2_file_open(&lfs2, &file, "bench_log",
             LFS2_O_WRONLY | LFS2_O_CREAT | LFS3_O_EXCL | LFS2_O_APPEND) => 0;
-    for (lfs3_size_t i = 0; i < LOG_SIZE; i += CHUNK) {
+    for (lfs3_size_t i = 0; i < SIZE; i += CHUNK) {
         for (lfs3_size_t j = 0; j < CHUNK; j++) {
             wbuf[j] = 'a' + (BENCH_PRNG(&prng) % 26);
         }
@@ -379,7 +376,7 @@ code = '''
     spiffs_file fd = SPIFFS_open(&spiffs, "bench_log",
             SPIFFS_WRONLY | SPIFFS_CREAT | SPIFFS_EXCL | SPIFFS_APPEND, 0777);
     assert(fd >= 0);
-    for (lfs3_size_t i = 0; i < LOG_SIZE; i += CHUNK) {
+    for (lfs3_size_t i = 0; i < SIZE; i += CHUNK) {
         for (lfs3_size_t j = 0; j < CHUNK; j++) {
             wbuf[j] = 'a' + (BENCH_PRNG(&prng) % 26);
         }
@@ -390,7 +387,7 @@ code = '''
     int fd = yaffs_open("bench_log",
             O_WRONLY | O_CREAT | O_EXCL | O_APPEND, 0777);
     assert(fd >= 0);
-    for (lfs3_size_t i = 0; i < LOG_SIZE; i += CHUNK) {
+    for (lfs3_size_t i = 0; i < SIZE; i += CHUNK) {
         for (lfs3_size_t j = 0; j < CHUNK; j++) {
             wbuf[j] = 'a' + (BENCH_PRNG(&prng) % 26);
         }
@@ -642,17 +639,7 @@ code = '''
             SPIFFS_check(&spiffs) => 0;
             // immediately rotate log after an error?
             if (needs_check && POWERLOSS_CHECKROTATE == 1) {
-                int err = SPIFFS_remove(&spiffs, "bench_log.2");
-                if (err && err != SPIFFS_ERR_NOT_FOUND) {
-                    LFS3_ERROR("spiffs: nested SPIFFS_check error (%d), "
-                                "aborting... :(",
-                            err);
-                    if (POWER_ABORTASSERT) {
-                        assert(false);
-                    }
-                    return;
-                }
-                err = SPIFFS_rename(&spiffs, "bench_log.1", "bench_log.2");
+                int err = SPIFFS_remove(&spiffs, "bench_log.1");
                 if (err && err != SPIFFS_ERR_NOT_FOUND) {
                     LFS3_ERROR("spiffs: nested SPIFFS_check error (%d), "
                                 "aborting... :(",
@@ -841,20 +828,18 @@ code = '''
 
             // for v3, fruncate, for v2, rotate if full
             //
-            // unlike litmus benchmarks we just use LOG_SIZE here
+            // unlike litmus benchmarks we just use SIZE here
             in_rotation = true;
             #if defined(LFS3)
             lfs3_soff_t size = lfs3_file_size(&lfs3, &file);
             assert(size >= 0);
             if (FRUNCATE) {
-                if (size > LOG_SIZE) {
-                    lfs3_file_fruncate(&lfs3, &file, LOG_SIZE) => 0;
+                if (size > SIZE) {
+                    lfs3_file_fruncate(&lfs3, &file, SIZE) => 0;
                 }
             } else {
-                if (size >= LOG_SIZE) {
+                if (size >= SIZE) {
                     lfs3_file_close(&lfs3, &file) => 0;
-                    int err = lfs3_rename(&lfs3, "bench_log.1", "bench_log.2");
-                    assert(!err || err == LFS3_ERR_NOENT);
                     lfs3_rename(&lfs3, "bench_log", "bench_log.1") => 0;
                     lfs3_file_open(&lfs3, &file, "bench_log",
                             LFS3_O_WRONLY
@@ -866,10 +851,8 @@ code = '''
             #elif defined(LFS2)
             lfs3_soff_t size = lfs2_file_size(&lfs2, &file);
             assert(size >= 0);
-            if (size >= LOG_SIZE) {
+            if (size >= SIZE) {
                 lfs2_file_close(&lfs2, &file) => 0;
-                int err = lfs2_rename(&lfs2, "bench_log.1", "bench_log.2");
-                assert(!err || err == LFS2_ERR_NOENT);
                 lfs2_rename(&lfs2, "bench_log", "bench_log.1") => 0;
                 lfs2_file_open(&lfs2, &file, "bench_log",
                         LFS2_O_WRONLY
@@ -881,23 +864,13 @@ code = '''
             spiffs_stat stat;
             SPIFFS_fstat(&spiffs, fd, &stat) => 0;
             assert(stat.size >= 0);
-            if (stat.size >= LOG_SIZE) {
+            if (stat.size >= SIZE) {
                 SPIFFS_close(&spiffs, fd) => 0;
-                int err = SPIFFS_remove(&spiffs, "bench_log.2");
+                int err = SPIFFS_remove(&spiffs, "bench_log.1");
                 assert(!err || err == SPIFFS_ERR_NOT_FOUND || POWERLOSS);
                 if (err && err != SPIFFS_ERR_NOT_FOUND) {
                     // uh oh, found an error? try to remount with check
                     LFS3_WARN("spiffs: remove error: %d, remounting...", err);
-                    needs_check = true;
-                    BENCH_ABORT("write");
-                    SPIFFS_unmount(&spiffs);
-                    goto remount_and_check;
-                }
-                err = SPIFFS_rename(&spiffs, "bench_log.1", "bench_log.2");
-                assert(!err || err == SPIFFS_ERR_NOT_FOUND || POWERLOSS);
-                if (err && err != SPIFFS_ERR_NOT_FOUND) {
-                    // uh oh, found an error? try to remount with check
-                    LFS3_WARN("spiffs: rename error: %d, remounting...", err);
                     needs_check = true;
                     BENCH_ABORT("write");
                     SPIFFS_unmount(&spiffs);
@@ -931,10 +904,8 @@ code = '''
             #elif defined(YAFFS2)
             struct yaffs_stat stat;
             yaffs_fstat(fd, &stat) => 0;
-            if (stat.st_size >= LOG_SIZE) {
+            if (stat.st_size >= SIZE) {
                 yaffs_close(fd) => 0;
-                int err = yaffs_rename("bench_log.1", "bench_log.2");
-                assert(!err || yaffs_errno == -ENOENT);
                 yaffs_rename("bench_log", "bench_log.1") => 0;
                 fd = yaffs_open("bench_log",
                         O_WRONLY | O_CREAT | O_EXCL | O_APPEND, 0777);
