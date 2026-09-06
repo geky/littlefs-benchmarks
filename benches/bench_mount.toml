@@ -737,7 +737,7 @@ code = '''
         assert(fd >= 0);
         #endif
         BENCH_STOP("open", mounts);
-        while (((SIM_MOUNTS && mounts < (uint64_t)SIM_MOUNTS)
+        while (((SIM_MOUNTS && mounts-1 < (uint64_t)SIM_MOUNTS)
                     || (SIM_ROTATES
                         && POWERLOSS
                         && rotates < (uint64_t)SIM_ROTATES)
