@@ -1,22 +1,35 @@
-ifndef BENCH_WEAR_S_MK
-BENCH_WEAR_S_MK := 1
+ifndef BENCH_WEAR_DS_S_MK
+BENCH_WEAR_DS_S_MK := 1
+
+# prevent parallel benching because of how big disk is
+DISK_BIG = 1
 
 # include build rules + filesystems
 include Makefiles/build.mk
 
 # overrideable results dir
-WEAR_S_RESULTSDIR ?= $(RESULTSDIR)/wear_s
+WEAR_DS_S_RESULTSDIR ?= $(RESULTSDIR)/wear_ds_s
 # overrideable plots dir
-WEAR_S_PLOTSDIR ?= $(PLOTSDIR)/wear_s
+WEAR_DS_S_PLOTSDIR ?= $(PLOTSDIR)/wear_ds_s
 # overrideable tikz dir
-WEAR_S_TIKZDIR ?= $(TIKZDIR)/wear_s
+WEAR_DS_S_TIKZDIR ?= $(TIKZDIR)/wear_ds_s
 
 
 # block recycles to bench? these only make sense for littlefs
-WEAR_S_BLOCK_RECYCLES ?= 0,1,10,100,1000
+WEAR_DS_S_BLOCK_RECYCLES ?= 0,1,10,100,1000
 
 # number of static files to create
-WEAR_S_STATIC_COUNTS ?= 0,1,2,4,8,16,24,28 #,32 #,64,128
+WEAR_DS_S_STATIC_COUNTS ?= 28
+
+# range of disk sizes to test
+#
+# note this needs to be >>2n, probably ~4n to be safe
+WEAR_DS_S_DISK_SIZES ?= $\
+        8388608,16777216,33554432,67108864,134217728,268435456,$\
+        536870912,1073741824,2147483648,4294967296,8589934592
+
+# pin SIM_SIZE, we _don't_ want this to grow with disk
+SIM_SIZE ?= 838860800 # 800 MiB
 
 
 # default bench filesystems to default bench filesystems
@@ -31,12 +44,12 @@ BENCH_CASES ?= logging # seq random logging many
 
 # this is a bit of a hack, but we want to make sure the BUILDDIR
 # directory structure is correct before we run any commands
-ifneq ($(WEAR_S_RESULTSDIR),.)
+ifneq ($(WEAR_DS_S_RESULTSDIR),.)
 $(if $(findstring n,$(MAKEFLAGS)),, \
 		$(foreach d, \
-				$(WEAR_S_RESULTSDIR) \
-				$(WEAR_S_PLOTSDIR) \
-				$(WEAR_S_TIKZDIR), \
+				$(WEAR_DS_S_RESULTSDIR) \
+				$(WEAR_DS_S_PLOTSDIR) \
+				$(WEAR_DS_S_TIKZDIR), \
             $(if $(wildcard $d),, $(shell mkdir -p $d))))
 endif
 
@@ -46,13 +59,13 @@ endif
 #======================================================================#
 
 ## Run benches
-.PHONY: all bench bench-wear-s
-all bench: bench-wear-s
-bench-wear-s: \
+.PHONY: all bench bench-wear-ds-s
+all bench: bench-wear-ds-s
+bench-wear-ds-s: \
 		$(foreach c, $(BENCH_CASES), \
 			$(foreach fs, $(BENCH_FILESYSTEMS), \
 				$(foreach g, $(BENCH_GEOMETRIES), \
-					$(WEAR_S_RESULTSDIR)/bench_wear_s.$(c).$(fs).$(g).csv)))
+					$(WEAR_DS_S_RESULTSDIR)/bench_wear_ds_s.$(c).$(fs).$(g).csv)))
 
 # core bench rule
 #
@@ -61,9 +74,10 @@ bench-wear-s: \
 # $3 - fs type/version
 # $4 - disk geometry
 # $5 - block recycles
-# $6 - static counts
+# $6 - disk sizes
+# $7 - static counts
 #
-define BENCH_WEAR_S_RULE
+define BENCH_WEAR_DS_S_RULE
 $1: $($(U_$3)_BENCH_RUNNER)
 	$$(strip ./scripts/bench.py -R$$< -B bench_wear_$2 \
 		$(BENCHFLAGS) $($(U_$3)_BENCHFLAGS) \
@@ -73,12 +87,12 @@ $1: $($(U_$3)_BENCH_RUNNER)
 		-DFS=$(N_$3) \
 		-DDISK_GEOMETRY=$(N_$4) \
 		-Swear=max -Swear=stddev -Swaf \
-		-Susage -Smdir -Sbtree -Sdata \
 		$(if $(filter $3,$\
 				$(DEFAULT_LFS3_FILESYSTEMS) $\
 				$(DEFAULT_LFS2_FILESYSTEMS)),$\
-			-DBLOCK_RECYCLES=$(or $5,$(WEAR_S_BLOCK_RECYCLES))) \
-		-DSTATIC_COUNT=$(or $6,$(WEAR_S_STATIC_COUNTS)) \
+			-DBLOCK_RECYCLES=$(or $5,$(WEAR_DS_S_BLOCK_RECYCLES))) \
+		-DDISK_SIZE=$(or $6,$(WEAR_DS_S_DISK_SIZES)) \
+		-DSTATIC_COUNT=$(or $7,$(WEAR_DS_S_STATIC_COUNTS)) \
 		-o$$@)
 endef
 
@@ -86,8 +100,8 @@ endef
 $(foreach c, $(BENCH_CASES),$\
 	$(foreach fs, $(BENCH_FILESYSTEMS),$\
 		$(foreach g, $(BENCH_GEOMETRIES),$\
-			$(eval $(call BENCH_WEAR_S_RULE,$\
-				$(WEAR_S_RESULTSDIR)/bench_wear_s.$(c).$(fs).$(g).csv,$\
+			$(eval $(call BENCH_WEAR_DS_S_RULE,$\
+				$(WEAR_DS_S_RESULTSDIR)/bench_wear_ds_s.$(c).$(fs).$(g).csv,$\
 				$(c),$\
 				$(fs),$\
 				$(g))))))
@@ -98,18 +112,18 @@ $(foreach c, $(BENCH_CASES),$\
 #======================================================================#
 
 ## Plot benchmarks
-.PHONY: all plot plot-wear-s
-all plot: plot-wear-s
-plot-wear-s: \
-		$(WEAR_S_PLOTSDIR)/plots.html \
+.PHONY: all plot plot-wear-ds-s
+all plot: plot-wear-ds-s
+plot-wear-ds-s: \
+		$(WEAR_DS_S_PLOTSDIR)/plots.html \
 		$(foreach g, $(BENCH_GEOMETRIES), \
-			$(WEAR_S_PLOTSDIR)/plot_wear_s.$(g).svg)
+			$(WEAR_DS_S_PLOTSDIR)/plot_wear_ds_s.$(g).svg)
 
 ## Create a quick html page for easy viewing
-$(WEAR_S_PLOTSDIR)/plots.html:
+$(WEAR_DS_S_PLOTSDIR)/plots.html:
 	echo -e "$(subst $(nl),\n,$(HTML_HEADER))" >> $@
 	$(foreach g, $(BENCH_GEOMETRIES), \
-		echo -e "<p><img src="plot_wear_s.$(g).svg"></p>" >> $@ $(nl))
+		echo -e "<p><img src="plot_wear_ds_s.$(g).svg"></p>" >> $@ $(nl))
 	echo -e "$(subst $(nl),\n,$(HTML_FOOTER))" >> $@
 
 # core plot rule
@@ -122,7 +136,7 @@ $(WEAR_S_PLOTSDIR)/plots.html:
 # $6 - x-skip
 # $7 - extra plotmpl.py flags
 #
-define PLOT_WEAR_S_RULE
+define PLOT_WEAR_DS_S_RULE
 $1: $2
 	$$(strip ./scripts/plotmpl.py \
 		<(./scripts/csv.py $$^ \
@@ -205,16 +219,16 @@ endef
 
 # plot rules
 $(foreach g, $(BENCH_GEOMETRIES), \
-	$(eval $(call PLOT_WEAR_S_RULE,$\
-		$(WEAR_S_PLOTSDIR)/plot_wear_s.$(g).svg,$\
+	$(eval $(call PLOT_WEAR_DS_S_RULE,$\
+		$(WEAR_DS_S_PLOTSDIR)/plot_wear_ds_s.$(g).svg,$\
 		$(foreach c, $(BENCH_CASES),$\
 			$(foreach fs, $(BENCH_FILESYSTEMS),$\
-				$(WEAR_S_RESULTSDIR)/bench_wear_s.$(c).$(fs).$(g).csv)),$\
-		"static counts - $(g) - simulated wear",$\
-		STATIC_COUNT,$\
-		$(WEAR_S_STATIC_COUNTS),$\
+				$(WEAR_DS_S_RESULTSDIR)/bench_wear_ds_s.$(c).$(fs).$(g).csv)),$\
+		"disk sizes - $(g) - simulated wear",$\
+		DISK_SIZE,$\
+		$(WEAR_DS_S_DISK_SIZES),$\
 		2,$\
-		--xlabel="static count")))
+		--xlabel="disk size")))
 
 
 #======================================================================#
@@ -222,12 +236,12 @@ $(foreach g, $(BENCH_GEOMETRIES), \
 #======================================================================#
 
 ## Generate tikz results
-.PHONY: all tikz tikz-wear-s
-all tikz tikz-wear-s: \
+.PHONY: all tikz tikz-wear-ds-s
+all tikz tikz-wear-ds-s: \
         $(foreach c, $(BENCH_CASES), \
             $(foreach fs, $(BENCH_FILESYSTEMS), \
                 $(foreach g, $(BENCH_GEOMETRIES), \
-                    $(WEAR_S_TIKZDIR)/tikz_wear_s.$(c).$(fs).$(g).csv)))
+                    $(WEAR_DS_S_TIKZDIR)/tikz_wear_ds_s.$(c).$(fs).$(g).csv)))
 
 # core tikz rule
 #
@@ -236,7 +250,7 @@ all tikz tikz-wear-s: \
 # $3 - block recycles
 # $4 - x-axis
 #
-define TIKZ_WEAR_S_RULE
+define TIKZ_WEAR_DS_S_RULE
 $1: $2
 	$$(strip ./scripts/csv.py \
 		$(foreach r, $(subst $(comma),$(space),$3), \
@@ -260,11 +274,11 @@ endef
 $(foreach c, $(BENCH_CASES), \
 	$(foreach fs, $(BENCH_FILESYSTEMS), \
 		$(foreach g, $(BENCH_GEOMETRIES), \
-			$(eval $(call TIKZ_WEAR_S_RULE,$\
-				$(WEAR_S_TIKZDIR)/tikz_wear_s.$(c).$(fs).$(g).csv,$\
-				$(WEAR_S_RESULTSDIR)/bench_wear_s.$(c).$(fs).$(g).csv,$\
-				$(WEAR_S_BLOCK_RECYCLES),$\
-				STATIC_COUNT)))))
+			$(eval $(call TIKZ_WEAR_DS_S_RULE,$\
+				$(WEAR_DS_S_TIKZDIR)/tikz_wear_ds_s.$(c).$(fs).$(g).csv,$\
+				$(WEAR_DS_S_RESULTSDIR)/bench_wear_ds_s.$(c).$(fs).$(g).csv,$\
+				$(WEAR_DS_S_BLOCK_RECYCLES),$\
+				DISK_SIZE)))))
 
 
 #======================================================================#
@@ -272,25 +286,25 @@ $(foreach c, $(BENCH_CASES), \
 #======================================================================#
 
 ## Save bench results
-.PHONY: save save-results save-results-wear-s
-save save-results: save-results-wear-s
-save-results-wear-s:
+.PHONY: save save-results save-results-wear-ds-s
+save save-results: save-results-wear-ds-s
+save-results-wear-ds-s:
 	mkdir -p $(SAVEDIR)/$(RESULTSDIR)/
-	cp -ru $(WEAR_S_RESULTSDIR) $(SAVEDIR)/$(RESULTSDIR)/
+	cp -ru $(WEAR_DS_S_RESULTSDIR) $(SAVEDIR)/$(RESULTSDIR)/
 
 ## Save bench plots
-.PHONY: save save-plots save-plots-wear-s
-save save-plots: save-plots-wear-s
-save-plots-wear-s:
+.PHONY: save save-plots save-plots-wear-ds-s
+save save-plots: save-plots-wear-ds-s
+save-plots-wear-ds-s:
 	mkdir -p $(SAVEDIR)/$(PLOTSDIR)/
-	cp -ru $(WEAR_S_PLOTSDIR) $(SAVEDIR)/$(PLOTSDIR)/
+	cp -ru $(WEAR_DS_S_PLOTSDIR) $(SAVEDIR)/$(PLOTSDIR)/
 
 ## Save tikz
-.PHONY: save save-tikz save-tikz-wear-s
-save save-tikz: save-tikz-wear-s
-save-tikz-wear-s:
+.PHONY: save save-tikz save-tikz-wear-ds-s
+save save-tikz: save-tikz-wear-ds-s
+save-tikz-wear-ds-s:
 	mkdir -p $(SAVEDIR)/$(TIKZDIR)/
-	cp -ru $(WEAR_S_TIKZDIR) $(SAVEDIR)/$(TIKZDIR)/
+	cp -ru $(WEAR_DS_S_TIKZDIR) $(SAVEDIR)/$(TIKZDIR)/
 
 
 #======================================================================#
@@ -298,10 +312,10 @@ save-tikz-wear-s:
 #======================================================================#
 
 ## Mark current results as up-to-date to prevent reruns
-.PHONY: reuse-results touch-results reuse-results-wear-s touch-results-wear-s
-reuse-results touch-results: reuse-results-wear-s touch-results-wear-s
-reuse-results-wear-s touch-results-wear-s:
-	find $(WEAR_S_RESULTSDIR) -name '*.csv' -execdir touch '{}' ';'
+.PHONY: reuse-results touch-results reuse-results-wear-ds-s touch-results-wear-ds-s
+reuse-results touch-results: reuse-results-wear-ds-s touch-results-wear-ds-s
+reuse-results-wear-ds-s touch-results-wear-ds-s:
+	find $(WEAR_DS_S_RESULTSDIR) -name '*.csv' -execdir touch '{}' ';'
 	@echo "# note: Make sure you build before plotting!"
 
 
@@ -310,24 +324,24 @@ reuse-results-wear-s touch-results-wear-s:
 #======================================================================#
 
 ## Clean bench results
-.PHONY: clean clean-results clean-results-wear-s
-clean clean-results: clean-results-wear-s
-clean-results-wear-s:
-	rm -rf $(WEAR_S_RESULTSDIR)
+.PHONY: clean clean-results clean-results-wear-ds-s
+clean clean-results: clean-results-wear-ds-s
+clean-results-wear-ds-s:
+	rm -rf $(WEAR_DS_S_RESULTSDIR)
 	@echo "# note: Not cleaning saved output"
 
 ## Clean bench plots
-.PHONY: clean clean-plots clean-plots-wear-s
-clean clean-plots: clean-plots-wear-s
-clean-plots-wear-s:
-	rm -rf $(WEAR_S_PLOTSDIR)
+.PHONY: clean clean-plots clean-plots-wear-ds-s
+clean clean-plots: clean-plots-wear-ds-s
+clean-plots-wear-ds-s:
+	rm -rf $(WEAR_DS_S_PLOTSDIR)
 	@echo "# note: Not cleaning saved output"
 
 ## Clean tikz
-.PHONY: clean clean-tikz clean-tikz-wear-s
-clean clean-tikz: clean-tikz-wear-s
-clean-tikz-wear-s:
-	rm -rf $(WEAR_S_TIKZDIR)
+.PHONY: clean clean-tikz clean-tikz-wear-ds-s
+clean clean-tikz: clean-tikz-wear-ds-s
+clean-tikz-wear-ds-s:
+	rm -rf $(WEAR_DS_S_TIKZDIR)
 	@echo "# note: Not cleaning saved output"
 
 
