@@ -18,7 +18,7 @@ defines.DISK_SIZE = '8*1024*1024' # 8 MiB
 # you probably _don't_ want this for wear-leveling!
 defines.SIM_TIME = 0 # '60ULL*60ULL*1000ULL*1000ULL*1000ULL' # 1 hour
 # simulation size in bytes
-defines.SIM_SIZE = '100*DISK_SIZE'
+defines.SIM_SIZE = '1024*DISK_SIZE'
 
 # set this to true to skip bench warmup
 defines.SKIP_WARMUP = false
